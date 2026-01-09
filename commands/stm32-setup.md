@@ -1,110 +1,156 @@
 ---
 name: stm32-setup
-description: Set up STM32 MCP documentation server in your project
+description: Set up STM32 MCP documentation server - installs dependencies and configures your project
 ---
 
 # STM32 MCP Setup Command
 
-Interactive setup for the STM32 documentation server.
+Interactive setup for the STM32 documentation server. Handles dependency installation and project configuration.
 
 ## Usage
 
 ```
-/stm32-setup                 Full setup with CLAUDE.md update
+/stm32-setup                 Full setup (install deps, check MCP, update CLAUDE.md)
 /stm32-setup --status        Show current installation status
 /stm32-setup --update-claude Only update project CLAUDE.md
 /stm32-setup --force-db      Force re-download of database
 ```
 
-## What This Command Does
+## Instructions for the Assistant
 
-When you run `/stm32-setup`, the assistant will:
+When the user runs `/stm32-setup`, follow these steps IN ORDER:
 
-### 1. Check Database Status
-- Verify if the STM32 documentation database is installed
-- Report the number of indexed document chunks
-- Show the database source (downloaded, ingested, or bundled)
+### Step 1: Check and Install uvx/uv
 
-### 2. Download Database (if needed)
-- Automatically downloads pre-built vector database from GitHub releases
-- Shows download progress
-- Falls back to local ingestion if download fails
+**CRITICAL: Do this FIRST before anything else.**
 
-### 3. Update Project CLAUDE.md
-- Adds comprehensive STM32 instructions to your project's CLAUDE.md
-- Lists all 16 available STM32 agents and their purposes
-- Documents all MCP tools (mcp__stm32-docs__*) with usage examples
-- Provides best practices for STM32 queries
+1. Check if uvx is available:
+   ```bash
+   command -v uvx
+   ```
 
-### 4. Show Installation Summary
-- Database status and chunk count
-- Installed agents list
-- Available slash commands
-- Quick start examples
+2. If uvx is NOT found, install uv:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+3. After installation, update PATH for current session:
+   ```bash
+   export PATH="$HOME/.local/bin:$PATH"
+   ```
+
+4. Verify installation worked:
+   ```bash
+   ~/.local/bin/uvx --version
+   ```
+
+5. If uv installation fails, try pip fallback:
+   ```bash
+   pip install uv
+   ```
+
+6. If all uv methods fail, install the package directly via pip:
+   ```bash
+   pip install git+https://github.com/creativec09/stm32.git
+   ```
+   Then tell the user: "Installed via pip. The MCP server will use `python -m mcp_server` instead of uvx."
+
+7. **After installing uvx**, tell the user:
+   ```
+   ✓ uvx installed successfully!
+
+   ACTION REQUIRED: Please restart Claude Code to connect the MCP server.
+
+   After restarting, run /stm32-setup again to complete configuration.
+   ```
+   Then STOP - don't continue to other steps until they restart.
+
+### Step 2: Check MCP Server Connection
+
+Only proceed here if uvx was already installed (not just installed in Step 1).
+
+1. Try to read the `stm32://status` resource
+2. If connection fails with error, diagnose:
+   - "spawn uvx ENOENT" → uvx not in PATH, go back to Step 1
+   - "ECONNREFUSED" → MCP server not starting, check logs
+   - Other errors → report to user
+
+3. If status shows "setup_required" or database is empty:
+   - The database will auto-download on first query
+   - Or user can wait for it to initialize
+
+### Step 3: Verify Database
+
+1. Call `mcp__stm32-docs__list_peripherals()` to verify the database works
+2. If it returns results, report:
+   - Number of peripherals documented
+   - Number of chunks indexed
+3. If it fails, the database may still be downloading - tell user to wait or try again
+
+### Step 4: Update Project CLAUDE.md
+
+1. Check if a CLAUDE.md exists in the current project directory
+2. If it exists, check for existing STM32 section (look for "## STM32 Development Instructions")
+3. If no STM32 section exists, append the template content below
+4. If it doesn't exist, create it with STM32 instructions
+
+### Step 5: Show Summary
+
+Report to the user:
+```
+STM32 MCP Setup Complete
+========================
+
+Dependencies:
+  ✓ uvx installed at ~/.local/bin/uvx
+
+MCP Server:
+  ✓ Connected to stm32-docs
+
+Database:
+  ✓ 13,815 document chunks indexed
+  ✓ 80 source documentation files
+
+Agents Installed: 16
+  router, triage, firmware, firmware-core, debug, bootloader,
+  bootloader-programming, peripheral-comm, peripheral-analog,
+  peripheral-graphics, power, power-management, safety,
+  safety-certification, security, hardware-design
+
+Commands Available:
+  /stm32 <query>        - Search documentation
+  /stm32-init <periph>  - Get initialization code
+  /stm32-hal <func>     - Look up HAL function
+  /stm32-debug <issue>  - Troubleshoot problems
+  /stm32-setup          - This setup command
+
+Quick Start:
+  Try: /stm32 How do I configure UART with DMA on STM32F4?
+```
+
+## Troubleshooting Decision Tree
+
+If something fails, follow this logic:
+
+```
+MCP Connection Failed?
+├── "spawn uvx ENOENT" or "uvx not found"
+│   └── Install uvx (Step 1) → Tell user to restart Claude Code
+├── "ECONNREFUSED"
+│   └── Check if Python/pip issues → Try pip install fallback
+├── "Authentication" or "404" errors
+│   └── Check GitHub access → Repo is public, should work
+└── Database empty or missing
+    └── Will auto-download on first query, or run /stm32-setup --force-db
+```
 
 ## MCP Tools Used
-
-This command relies on the following MCP tools:
 
 | Tool | Purpose |
 |------|---------|
 | `mcp__stm32-docs__list_peripherals` | Verify database is working |
 | Read resource `stm32://status` | Get server status |
 | Read resource `stm32://health` | Check server health |
-
-## Example Output
-
-```
-STM32 MCP Setup
-===============
-
-Database Status:
-  - Status: Ready
-  - Chunks: 13,815 document chunks
-  - Source: Downloaded from GitHub release v0.1.0
-
-Available Agents (16):
-  - router: Query routing and classification
-  - firmware: Core firmware development
-  - debug: Debugging and troubleshooting
-  ... (13 more)
-
-Available Commands:
-  - /stm32 <query>
-  - /stm32-init <peripheral>
-  - /stm32-hal <function>
-  - /stm32-debug <issue>
-  - /stm32-setup
-
-CLAUDE.md Updated:
-  Added STM32 instructions to ./CLAUDE.md
-
-Quick Start:
-  Try: /stm32 How do I configure UART with DMA?
-```
-
-## Instructions for the Assistant
-
-When the user runs `/stm32-setup`, follow these steps:
-
-1. **Check MCP Server Status**
-   - Read the `stm32://status` resource to get database state
-   - If status is "setup_required", inform the user
-
-2. **Verify Database**
-   - Call `mcp__stm32-docs__list_peripherals()` to verify the database works
-   - Report the number of peripherals documented
-
-3. **Update CLAUDE.md**
-   - Check if a CLAUDE.md exists in the current project directory
-   - If it exists, append STM32 instructions (avoiding duplicates)
-   - If it doesn't exist, create it with STM32 instructions
-   - Use the content from the STM32 CLAUDE.md template
-
-4. **Show Summary**
-   - Report all installed components
-   - Provide quick start examples
-   - Suggest first queries to try
 
 ## CLAUDE.md Template Content
 

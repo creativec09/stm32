@@ -12,14 +12,22 @@ The STM32 MCP Documentation Server is an MCP (Model Context Protocol) server tha
 
 ### One-Command Install (Recommended)
 
+This installation method auto-installs `uv` if needed, making it work out-of-the-box on Ubuntu 24 WSL and other Linux systems:
+
 ```bash
-# Install MCP server with auto-setup (agents + docs auto-install on first run)
-claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs
+# Install MCP server with auto-setup (auto-installs uv if needed, agents + docs auto-install on first run)
+claude mcp add-json stm32-docs --scope user '{"command":"bash","args":["-c","export PATH=\"$HOME/.local/bin:$PATH\" && (command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q) && uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs"]}'
 ```
 
-**Note**: For private repository access, include a GitHub Personal Access Token:
+**Note**: For private repository access, include a GitHub Personal Access Token in the URL:
 ```bash
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs
+claude mcp add-json stm32-docs --scope user '{"command":"bash","args":["-c","export PATH=\"$HOME/.local/bin:$PATH\" && (command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q) && uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs"]}'
+```
+
+### If you already have `uv` installed
+
+```bash
+claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 ### What Auto-Installs on First Run

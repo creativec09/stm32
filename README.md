@@ -34,14 +34,19 @@ This single command installs:
 
 ### Alternative: Manual MCP Installation
 
-If you prefer not to use the plugin system, you can install just the MCP server:
+If you prefer not to use the plugin system, you can install just the MCP server.
 
+**Ubuntu 24 / WSL / Linux (auto-installs uv if needed):**
 ```bash
-# Install the MCP server via uvx
+claude mcp add-json stm32-docs --scope user '{"command":"bash","args":["-c","export PATH=\"$HOME/.local/bin:$PATH\" && (command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q) && uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs"]}'
+```
+
+**If you already have uv installed:**
+```bash
 claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
-Note: This method requires a GitHub Personal Access Token with `repo` scope for private repositories.
+Note: For private repositories, include a GitHub Personal Access Token with `repo` scope in the URL: `git+https://TOKEN@github.com/...`
 
 ### Start Using
 
@@ -77,9 +82,11 @@ Or ask naturally:
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- [uv](https://docs.astral.sh/uv/) - Install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- Python 3.11 or higher (pre-installed on Ubuntu 24)
+- curl (pre-installed on Ubuntu 24)
 - Claude Code CLI
+
+Note: `uv` is automatically installed on first use if not present.
 
 ### Method 1: Plugin Installation (Recommended)
 
@@ -314,14 +321,14 @@ Subsequent requests are fast (<100ms).
 ### Server won't start
 
 ```bash
-# Check uv is installed
-uv --version
-
 # Verify registration
 claude mcp list
 
 # Check server status
 claude mcp status stm32-docs
+
+# If uv issues, reinstall manually:
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 For more troubleshooting help, see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#troubleshooting).

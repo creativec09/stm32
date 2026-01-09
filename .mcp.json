@@ -1,12 +1,11 @@
 {
   "mcpServers": {
     "stm32-docs": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/creativec09/stm32.git", "stm32-mcp-docs"],
-      "env": {
-        "STM32_SERVER_MODE": "local",
-        "STM32_LOG_LEVEL": "INFO"
-      }
+      "command": "bash",
+      "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$PATH\" && (command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q) && STM32_SERVER_MODE=local STM32_LOG_LEVEL=INFO uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs"
+      ]
     }
   }
 }
