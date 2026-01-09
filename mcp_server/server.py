@@ -40,6 +40,7 @@ from storage.chroma_store import STM32ChromaStore
 from storage.metadata import Peripheral, DocType
 from mcp_server.config import settings, ServerMode
 from mcp_server.resources.handlers import DocumentationResources
+from mcp_server.database_manager import DatabaseManager, DownloadProgress
 
 # Import advanced search tools
 from mcp_server.tools.search import (
@@ -94,10 +95,9 @@ async def server_lifespan(server: FastMCP):
     Server lifespan context manager.
 
     This is called when the server starts up. It:
-    1. Initializes the ChromaDB store
-    2. Checks if the database is empty
-    3. If empty and markdown files exist, auto-runs ingestion
-    4. Creates the ServerContext for sharing across requests
+    1. Initializes the DatabaseManager
+    2. Ensures database is ready (download or ingest if needed)
+    3. Creates the ServerContext for sharing across requests
     """
     logger.info("=" * 60)
     logger.info(f"STM32 MCP Server v{settings.SERVER_VERSION} starting...")
@@ -106,9 +106,27 @@ async def server_lifespan(server: FastMCP):
     # Ensure required directories exist
     settings.ensure_directories()
 
-    # NOTE: Agent installation is now handled by the Claude Code plugin system.
-    # Users install with: /plugin install github:creativec09/stm32-agents
-    # This automatically installs agents from the plugin's agents/ directory.
+    # Progress callback for database operations
+    def log_db_progress(progress: DownloadProgress):
+        if progress.total_bytes > 0:
+            logger.info(
+                f"{progress.message}: {progress.percentage:.1f}% "
+                f"({progress.current_bytes / 1024 / 1024:.1f} MB / "
+                f"{progress.total_bytes / 1024 / 1024:.1f} MB)"
+            )
+        else:
+            logger.info(progress.message)
+
+    # Initialize DatabaseManager
+    db_manager = DatabaseManager(
+        db_path=settings.CHROMA_DB_PATH,
+        markdowns_path=settings.RAW_DOCS_DIR,
+        progress_callback=log_db_progress
+    )
+
+    # Ensure database is ready
+    logger.info("Checking database status...")
+    db_info = db_manager.ensure_database()
 
     # Initialize the ChromaDB store
     logger.info(f"Initializing ChromaDB store at {settings.CHROMA_DB_PATH}")
@@ -119,65 +137,15 @@ async def server_lifespan(server: FastMCP):
     )
 
     chunk_count = store.count()
-    logger.info(f"Current database: {chunk_count} chunks")
 
-    # Check if database is empty and needs ingestion
-    if chunk_count == 0:
-        # Check if markdown files exist
-        from mcp_server.ingestion import find_markdown_files
-        md_files = find_markdown_files(settings.RAW_DOCS_DIR)
-
-        if md_files:
-            logger.info("=" * 60)
-            logger.info("Database empty, starting auto-ingestion...")
-            logger.info(f"Found {len(md_files)} markdown files in {settings.RAW_DOCS_DIR}")
-            logger.info("=" * 60)
-
-            # Run ingestion
-            from mcp_server.ingestion import run_ingestion
-
-            def log_progress(message: str, current: int, total: int):
-                if current % 10 == 0 or current == total:
-                    logger.info(f"[{current}/{total}] {message}")
-
-            result = run_ingestion(
-                source_dir=settings.RAW_DOCS_DIR,
-                store=store,
-                chunk_size=settings.CHUNK_SIZE,
-                chunk_overlap=settings.CHUNK_OVERLAP,
-                min_chunk_size=settings.MIN_CHUNK_SIZE,
-                clear_existing=False,
-                progress_callback=log_progress
-            )
-
-            chunk_count = store.count()
-
-            if result["success"]:
-                logger.info("=" * 60)
-                logger.info(f"Ingestion complete!")
-                logger.info(f"  Files processed: {result['total_files']}")
-                logger.info(f"  Chunks created: {result['total_chunks']}")
-                if result.get('failed_files', 0) > 0:
-                    logger.warning(f"  Failed files: {result['failed_files']}")
-                logger.info("=" * 60)
-                status = "ready"
-                message = f"Ready - {chunk_count:,} chunks indexed from {result['total_files']} documents"
-            else:
-                logger.error(f"Ingestion failed: {result.get('error', 'Unknown error')}")
-                status = "setup_required"
-                message = f"Ingestion failed: {result.get('error', 'Unknown error')}"
-        else:
-            logger.warning("=" * 60)
-            logger.warning("Database is empty and no markdown files found!")
-            logger.warning(f"Expected markdown files in: {settings.RAW_DOCS_DIR}")
-            logger.warning("Please add STM32 documentation files to this directory.")
-            logger.warning("=" * 60)
-            status = "setup_required"
-            message = f"No documentation files found in {settings.RAW_DOCS_DIR}"
-    else:
-        logger.info(f"Ready - {chunk_count:,} chunks available")
+    if db_info.exists and chunk_count > 0:
         status = "ready"
-        message = f"Ready - {chunk_count:,} chunks indexed"
+        message = f"Ready - {chunk_count:,} chunks indexed (source: {db_info.source})"
+        logger.info(message)
+    else:
+        status = "setup_required"
+        message = "Database is empty. Run /stm32-setup or check documentation."
+        logger.warning(message)
 
     # Create resources handler
     resources_handler = DocumentationResources(store)
@@ -196,7 +164,7 @@ async def server_lifespan(server: FastMCP):
     logger.info(f"Mode: {settings.SERVER_MODE.value}")
     logger.info("=" * 60)
 
-    # Yield the context - this makes it available via ctx.request_context.lifespan_context
+    # Yield the context
     yield context
 
     # Cleanup on shutdown

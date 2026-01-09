@@ -171,6 +171,37 @@ class Settings(BaseSettings):
     )
 
     # =========================================================================
+    # Database Download Configuration
+    # =========================================================================
+
+    GITHUB_REPO: str = Field(
+        default="creativec09/stm32-agents",
+        description="GitHub repository for downloading pre-built database",
+    )
+
+    DB_ASSET_NAME: str = Field(
+        default="chromadb-stm32-docs.tar.gz",
+        description="Name of the database asset in GitHub releases",
+    )
+
+    DB_MANIFEST_NAME: str = Field(
+        default="chromadb-manifest.json",
+        description="Name of the manifest file in GitHub releases",
+    )
+
+    ENABLE_AUTO_DOWNLOAD: bool = Field(
+        default=True,
+        description="Automatically download database on first run",
+    )
+
+    DOWNLOAD_TIMEOUT: int = Field(
+        default=300,
+        description="Timeout for database download in seconds",
+        ge=30,
+        le=600,
+    )
+
+    # =========================================================================
     # Chunking Configuration
     # =========================================================================
 

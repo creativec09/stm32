@@ -31,7 +31,8 @@
     "./commands/stm32.md",
     "./commands/stm32-hal.md",
     "./commands/stm32-init.md",
-    "./commands/stm32-debug.md"
+    "./commands/stm32-debug.md",
+    "./commands/stm32-setup.md"
   ],
   "mcpServers": "./mcp-config.json"
 }
