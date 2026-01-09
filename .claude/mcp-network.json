@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "type": "sse",
+      "url": "http://YOUR_TAILSCALE_IP:8765/sse",
+      "description": "STM32 documentation server (network mode)"
+    }
+  }
+}

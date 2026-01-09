@@ -1,0 +1,299 @@
+[project]
+name = "stm32-mcp-docs"
+version = "0.1.0"
+description = "MCP server for STM32 documentation retrieval with semantic search and Tailscale network support"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "STM32 Agents Team"}
+]
+maintainers = [
+    {name = "STM32 Agents Team"}
+]
+keywords = [
+    "stm32",
+    "mcp",
+    "model-context-protocol",
+    "documentation",
+    "embeddings",
+    "chromadb",
+    "tailscale",
+    "embedded-systems",
+    "microcontroller",
+    "claude",
+    "ai-assistant"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Embedded Systems",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    # MCP Framework
+    "mcp>=1.0.0",
+
+    # Vector Store & Embeddings
+    "chromadb>=0.4.22,<1.0.0",
+    "sentence-transformers>=2.2.2,<3.0.0",
+
+    # Data Validation
+    "pydantic>=2.5.0,<3.0.0",
+    "pydantic-settings>=2.1.0,<3.0.0",
+
+    # Tokenization
+    "tiktoken>=0.5.2,<1.0.0",
+
+    # CLI & Output
+    "rich>=13.7.0",
+    "typer>=0.9.0,<1.0.0",
+
+    # Environment & Config
+    "python-dotenv>=1.0.0",
+
+    # HTTP Server for Tailscale network access
+    "uvicorn>=0.25.0",
+    "starlette>=0.35.0",
+    "sse-starlette>=1.8.0",
+    "httpx>=0.26.0",
+
+    # Async support
+    "anyio>=4.2.0",
+
+    # Utilities
+    "watchfiles>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+
+    # Code Quality & Formatting
+    "ruff>=0.1.9",
+    "mypy>=1.8.0",
+    "black>=23.12.0",
+    "isort>=5.13.0",
+
+    # Pre-commit Hooks
+    "pre-commit>=3.6.0",
+]
+
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+]
+
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings>=0.24.0",
+    "mkdocstrings-python>=1.7.0",
+]
+
+[project.scripts]
+# Primary setup command - the main entry point for new users
+stm32-setup = "scripts.setup:main"
+
+# Server commands
+stm32-docs = "scripts.start_server:main"
+stm32-server = "scripts.start_server:main"
+
+# Documentation management
+stm32-ingest = "scripts.ingest_docs:main"
+
+# Validation and testing
+stm32-validate = "scripts.validate_system:main"
+stm32-verify = "scripts.verify_mcp:main"
+stm32-test-retrieval = "scripts.test_retrieval:main"
+
+# Search interface
+stm32-search = "scripts.search:main"
+
+[project.urls]
+Homepage = "https://github.com/YOUR_USERNAME/stm32-agents"
+Documentation = "https://github.com/YOUR_USERNAME/stm32-agents#readme"
+Repository = "https://github.com/YOUR_USERNAME/stm32-agents.git"
+Issues = "https://github.com/YOUR_USERNAME/stm32-agents/issues"
+Changelog = "https://github.com/YOUR_USERNAME/stm32-agents/releases"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mcp_server*", "pipeline*", "storage*", "scripts*"]
+exclude = ["tests*", "docs*", "markdowns*", ".venv*", "data*", "logs*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.md", "*.yaml", "*.yml", "*.example"]
+"mcp_server" = ["prompts/*.md", "py.typed"]
+
+# ============================================================================
+# Code Quality Tools Configuration
+# ============================================================================
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "ARG001", # unused function argument (common in callbacks)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["ARG001", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mcp_server", "pipeline", "storage", "scripts"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | __pycache__
+    | build
+    | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["mcp_server", "pipeline", "storage", "scripts"]
+skip = [".venv", "build", "dist"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+show_error_codes = true
+exclude = [
+    "tests/",
+    ".venv/",
+    "build/",
+    "dist/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "chromadb.*",
+    "sentence_transformers.*",
+    "tiktoken.*",
+    "rich.*",
+    "typer.*",
+]
+ignore_missing_imports = true
+
+# ============================================================================
+# Testing Configuration
+# ============================================================================
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--cov=mcp_server",
+    "--cov=pipeline",
+    "--cov=storage",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "network: marks tests that require network access",
+]
+
+[tool.coverage.run]
+source = ["mcp_server", "pipeline", "storage"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+]
+show_missing = true
+precision = 2
+fail_under = 70

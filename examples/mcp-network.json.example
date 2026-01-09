@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "env": {
+        "STM32_SERVER_MODE": "network",
+        "STM32_HOST": "0.0.0.0",
+        "STM32_PORT": "8765",
+        "STM32_LOG_LEVEL": "INFO"
+      },
+      "description": "STM32 docs server in network mode for Tailscale access"
+    }
+  }
+}

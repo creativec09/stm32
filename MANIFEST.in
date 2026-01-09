@@ -1,0 +1,52 @@
+# MANIFEST.in - Package distribution manifest
+# This file specifies additional files to include in source distributions
+
+# Include documentation
+include README.md
+include LICENSE
+include ARCHITECTURE.md
+include EXAMPLES.md
+include INGESTION_CHECKLIST.md
+
+# Include configuration files
+include pyproject.toml
+include requirements.txt
+include requirements-dev.txt
+include .env.example
+
+# Include all documentation in docs/
+recursive-include docs *.md
+
+# Include example configurations
+recursive-include examples *.json *.example *.md
+
+# Include Claude Code configuration templates
+recursive-include .claude *.json *.md
+
+# Include test files
+recursive-include tests *.py *.json *.md
+
+# Include type hints marker
+include mcp_server/py.typed
+
+# Exclude development and generated files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude *.egg-info
+global-exclude .git*
+global-exclude .coverage
+global-exclude .pytest_cache
+
+# Exclude data directories (these are generated/user-specific)
+prune data
+prune logs
+prune markdowns
+prune .venv
+
+# Exclude IDE/editor files
+global-exclude .idea
+global-exclude .vscode
+global-exclude *.swp
+global-exclude *~

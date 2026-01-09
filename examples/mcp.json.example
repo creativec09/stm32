@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "env": {
+        "STM32_SERVER_MODE": "local",
+        "STM32_LOG_LEVEL": "INFO"
+      },
+      "description": "STM32 documentation search via semantic search. First startup takes ~90s due to ML model loading."
+    }
+  }
+}

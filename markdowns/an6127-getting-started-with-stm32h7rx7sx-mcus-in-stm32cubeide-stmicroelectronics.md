@@ -1,0 +1,228 @@
+# Getting started with STM32H7Rx/7Sx MCUs in STM32CubeIDE
+
+# Introduction
+
+This application note describes how to get started with projects based on STM32H7Rx/7Sxmicrocontrollers in the STMicroelectronics STM32CubeIDE integrated development environment.
+
+Table 1. Applicable products   
+
+<table><tr><td rowspan=1 colspan=1>Type</td><td rowspan=1 colspan=1>Products</td></tr><tr><td rowspan=1 colspan=1>Microcontrollers</td><td rowspan=1 colspan=1>STM32H7R3/7S3 line, STM32H7R7/7S7 line</td></tr><tr><td rowspan=1 colspan=1>Software development tool</td><td rowspan=1 colspan=1>STM32CubeIDE</td></tr></table>
+
+# 1 General information
+
+# Note:
+
+STM32CubelDE supports STM32 32-bit products based on the Arm® Cortex® processor.   
+Arm is a registered trademark of Arm Limited (or its subsidiaries) in the US and/or elsewhere.
+
+arm
+
+# Prerequisites
+
+Tou v based on the STM32H7Rx/7Sx microcontrollers:
+
+STM32CubelDE 1.15.0 or newer STM32Cube_FW_H7RS_V1.0.0 or newer STM32CubeMX 6.12.0 or newer
+
+Users are advised to keep updated with the documentation evolution f the STM32H7Rx/7Sx microcontrollers at www.st.com/en/microcontrollers-microprocessors/stm32h7-series.html.
+
+# 1.2
+
+# The use cases in this document
+
+In the STM32CubelDE context, users have different ways to explore and get started with the development o basehe3Rxmioctrollerromhe st belowelect he escti hat best the use case considered and refer to the corresponding section in this application note:
+
+I want to learn with and explore example projects: Refer to Section 2.3: Import a project from the STM32CubeH7RS MCU Package
+
+I want to start a first STM32H7Rx/7Sx project:
+
+Empty project - No STM32CubeMX support for maximum flexibility.   
+Refer to Section 2.2: Create an empty project based on the template in the STM32CubeH7RS MCU Package   
+STM32CubeH7RS project - STM32CubeMX-managed project.   
+Refer to Section 2.1: Create a new STM32 project
+
+# 2 Create and import projects
+
+This chapter describes how to create or import projects for STM32H7Rx/7Sx microcontrollers.
+
+# 2.1
+
+# Create a new STM32 project
+
+To start a new project, go to [File]>[New]>[STM32 Project] as shown in Figure 1.
+
+Figure 1. New STM32 project   
+
+<table><tr><td>File</td><td></td><td>Edit Source Refactor Navigate Search Project Run Window Help</td><td></td><td></td><td></td><td></td><td></td><td></td><td>Hello</td><td></td><td></td></tr><tr><td></td><td colspan="5">New</td><td>Alt+Shift+N &gt;</td><td>C</td><td>Makefile Project with Existing Code</td><td colspan="2"></td><td></td></tr><tr><td></td><td colspan="5">Open File...</td><td></td><td colspan="2"></td><td>C/C++ Project</td><td colspan="2"></td></tr><tr><td>0</td><td colspan="5">Open Projects from File System...</td><td colspan="2"></td><td>IDE</td><td colspan="2">STM32 Project</td></tr><tr><td></td><td colspan="5">Recent Files</td><td>)</td><td>MX</td><td colspan="2">STM32 Project from an Existing STM32CubeMX Configuration File (.ioc)</td></tr><tr><td></td><td colspan="2">Close Editor</td><td></td><td></td><td colspan="2">Ctrl+W</td><td>IDE</td><td colspan="2">STM32 CMake Project</td></tr><tr><td></td><td colspan="2">Close All Editors</td><td colspan="2"></td><td colspan="2">Ctrl+Shift+W</td><td></td><td colspan="2">Project...</td></tr><tr><td></td><td colspan="6">Save Ctrl+S</td><td colspan="2">Source Folder</td></tr><tr><td>H</td><td colspan="6">Save As..</td><td colspan="2">Folder</td></tr><tr><td>B</td><td colspan="6">Save All Ctrl+Shift+S</td><td colspan="2">Source File</td></tr><tr><td></td><td colspan="6">Revert </td><td colspan="2">Header File</td></tr><tr><td></td><td colspan="5">Move..</td><td>File from Template</td><td colspan="2"></td></tr><tr><td></td><td colspan="6">C Rename... F2</td><td colspan="2">Class</td></tr><tr><td>$</td><td colspan="5">□ F5 Refresh</td><td>Other...</td><td colspan="2">Ctrl+N</td></tr><tr><td></td><td colspan="5">Convert Line Delimiters To =</td><td></td><td colspan="2"></td></tr><tr><td></td><td colspan="5">Print... Ctrl+P</td><td></td><td colspan="2"></td></tr><tr><td></td><td colspan="4">Import...</td><td></td><td colspan="2"></td><td></td></tr><tr><td>L</td><td colspan="4">Export..</td><td></td><td colspan="2"></td><td></td></tr><tr><td></td><td colspan="5">Properties Alt+Enter</td><td></td><td colspan="2"></td></tr><tr><td></td><td colspan="5">Switch Workspace )</td><td></td><td colspan="2"></td></tr><tr><td></td><td colspan="5">Restart</td><td></td><td colspan="2"></td></tr><tr><td></td><td colspan="5"></td><td></td><td colspan="2"></td></tr><tr><td>Exit</td><td colspan="5"></td><td></td><td colspan="2"></td></tr></table>
+
+Sel eei MCUbora ratngur he el boars DK. Click on [Next >].
+
+![](images/9c4c0e13000f830db2bb0f51301e02c4ff93c5ce255faf361f5a2f98f1b519a1.jpg)  
+Figure 2. Target selection
+
+< Back Next> Finish Cancel
+
+Atr the target selection comes he project setup ste shown  FigureTheTargete roject ype sett determines whether the project gets generated by STM32CubeMX or not. An Empty project is a skeleton of a project that needs building upon while STM32Cube indicates an STM32CubeMX-managed project.
+
+![](images/e087c942de89173e2ef6c0dc076e88b77f4eba66a0ad17dcf7ca6988a2d51a8b.jpg)  
+Figure 3. Projet setup (STM32CubeMX-managed project creation)
+
+The created project contains up to three subprojects:
+
+STM32H7S78-DK_Appli: dedicated to the main application development.   
+STM32H7S78-DK_Boot: dedicated to the bootloader development.   
+STM32H7S78-DK_ExtMemLoader (optional and not generated by default): to be used when the user needs an own external flash loader.
+
+# 2.2
+
+# Create an empty project based on the template in the STM32CubeH7RS MCU Package
+
+To start a new project, go to [File]>[New]>[TM32 Project] as shown in Figure 1. New STM32 project. STM32H7S78-DK. Click on [Next >].
+
+Arhe target election comes e projec setu se show  Figure eTarget roje ype tt determines whether the project gets generated by STM32CubeMX or not. An Empty project is a skeleton of a project that needs building upon while STM32Cube indicates an STM32CubeMX-managed project.
+
+![](images/6a7141e410990c46cf6e8b47d424a11fe256c231dae68fa113f09bcdc084595b.jpg)  
+Figure 4. Projet setup (empty project creation)
+
+# 2.3
+
+# Import a project from the STM32CubeH7RS MCU Package
+
+To import the STM32Cube firmware project into STM32CubelDE, go to [File]>[Open Projects from File System...].
+
+Telec e i roj roaple ydet ocat C \STM32Cube_FW_H7RS_V1.0.0\Projects\STM32H7S78-DK\Applications\USB_Device\MSC_Standalone\STM32C ubeIDE.
+
+![](images/f82325c19119940a7a57c3a42ee815a23fa8369816c4d58025f799cc5df7aa09.jpg)  
+Figure 5. Firmware project selection
+
+After selecting the project, click on [Finish] to import and build the project.
+
+# 3 Debugging
+
+This chapter highlights someof the points to bear in mind while debugging an STM32H7Rx/7Sx microcontroller. Inte ext to secns, t plationocoveecgurations ee  de sins w-LINK GDB server and OpenOCD.
+
+DK_Appli) and select [Debug As]>[Debug Configurations..] as shown in Figure 6.
+
+![](images/e5b76d8c29a712413bbe953425cdbabe0648747883e17182d054f55033fd1c0f.jpg)  
+Figure 6. ST-LINK GDB server debug configuration (1 of 4) and OpenOCD debug configuration (1 of 2)
+
+For the rest of this chapter, examples are based on the STM32H7S78-DK board.
+
+# 3.1
+
+# Setting up with ST-LINK GDB server
+
+Byfuleal eoy  d prabiayHweeall ial amey y eeteleyssteMultke orgheeyy  extea moy  xtal  l set in the debug configuration as shown in Figure 7.
+
+To able debu nd hepliation, he boot must  prorammes inhedevicmemory Ine debug configuration, switch to the Startup tab and select [Add...].
+
+![](images/cf7ab4825a892d213c5cb8bb0df641dd9c6deb8399fc851430b9439ed59de8db.jpg)  
+Figure 7. ST-LINK GDB server debug configuration (2 of 4)
+
+The STM32H7S78-DK_Appli configuration is responsible for loading both the STM32H7S78-DK_Appli and STM32H7S78-DK_Boot images. Go to the Startup tab to do this as shown in Figure 8:
+
+![](images/769bfcd514447a87184677619c3f865741e90954eb032b194fb113b8e24634de.jpg)  
+Figure 8. ST-LINK GDB server debug configuration (3 of 4)
+
+Todownload also the STM32H7S78-DKBootmage, click on [Add. browse the correct project, and build he configuration. The result is shown in Figure 9.
+
+![](images/2b4c48503803334c5d59d589f3a7511fcb06429a510b8c5fbc8d4799b7a9a724.jpg)  
+Figure 9. ST-LINK GDB server debug configuration (4 of 4)
+
+themage debugged with this debug configuration.Consequently, the debugger etches the program counter value (PC) from this image.
+
+The configuration is complete.
+
+# 3.1.1
+
+# Launching the configurations (ST-LINK GDB server)
+
+Tdebug the project, launch the TM32H7S78-DKAppli debug session.The execution starts at the begin the main function from the boot project. Then, it is possible to jump to the application.
+
+![](images/076c1f041136c127ef72b0afa67d16bc6bce8f9477988ac42fab64d551386c46.jpg)  
+Figure 10. ST-LINK GDB server debug configuration launch
+
+# 3.2
+
+# Setting up with OpenOCD
+
+Select ST-LINK (OpenOCD) as the [Debug probe] in the debug configuration of the STM32H7S78-DK_Appli.
+
+![](images/3fc44a43a56031e6b6cb2034ffd0239a7962e4d16fb1d5a56f1eab7f510dfa2d.jpg)  
+Figure 11. OpenOCD debug configuration (2 of 2)
+
+The rest of the configuration is the same as for debugging with ST-LINK GDB server (refer to Figure 7).
+
+# 3.2.1
+
+# Launching the configurations (OpenOCD)
+
+The same approach is used as with ST-LINK GDB server (refer to Section 3.1.1).
+
+![](images/dba1d022cba921103e3af186583889c64ebc51c084e263fdb293b0c8050f5098.jpg)  
+Figure 12. OpenOCD debug configuration launch
+
+# Revision history
+
+Table 2. Document revision history   
+
+<table><tr><td>Date</td><td>Revision</td><td>Changes</td></tr><tr><td>19-Feb-2025</td><td>1</td><td>Initial release.</td></tr></table>
+
+# Contents
+
+# 1 General information
+
+1.1 Prerequisites   
+1.2 The use cases in this document
+
+# Create and import projects. 3
+
+2.1 Create a new STM32 project. 3   
+2.2 Create an empty project based on the template in the STM32CubeH7RS MCU Package . . 6   
+2.3 Import a project from the STM32CubeH7RS MCU Package.
+
+# 3 Debugging 8
+
+3.1 Setting up with ST-LINK GDB server 9   
+3.1.1 Launching the configurations (ST-LINK GDB server) 11   
+3.2 Setting up with OpenOCD 12
+
+3.2.1 Launching the configurations (OpenOCD). 13
+
+# evision history 14
+
+# .ist of tables .16
+
+_ist of figures. 17
+
+# List of tables
+
+Table 1. Applicable products Table 2. Document revision history. 14
+
+# List of figures
+
+Figure 1. New STM32 project. 3   
+Figure 2. Target selection 4   
+Figure 3. Projet setup (STM32CubeMX-managed project creation). 5   
+Figure 4. Projet setup (empty project creation) 6   
+Figure 5. Firmware project selection . 7   
+Figure 6. ST-LINK GDB server debug configuration (1 of 4) and OpenOCD debug configuration (1 of 2). 8   
+Figure 7. ST-LINK GDB server debug configuration (2 of 4) 9   
+Figure 8. ST-LINK GDB server debug configuration (3 of 4). 10   
+Figure 9. ST-LINK GDB server debug configuration (4 of 4). 11   
+Figure 10. ST-LINK GDB server debug configuration launch 11   
+Figure 11. OpenOCD debug configuration (2 of 2) 12   
+Figure 12. OpenOCD debug configuration launch. 13
+
+# IMPORTANT NOTICE  READ CAREFULLY
+
+pt old ursant  dits   leole.
+
+purchasers' products.
+
+No license, express or implied, to any intellectual property right is granted by ST herein.
+
+are the property of their respective owners.
+
+I
+
+© 2025 STMicroelectronics - All rights reserved

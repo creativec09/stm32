@@ -1,0 +1,551 @@
+# Installation Guide
+
+This guide provides detailed installation instructions for the STM32 MCP Documentation Server.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Install (Recommended)](#quick-install-recommended)
+- [What Gets Installed](#what-gets-installed)
+- [Alternative Installation Methods](#alternative-installation-methods)
+- [Post-Installation Setup](#post-installation-setup)
+- [Claude Code Integration](#claude-code-integration)
+- [Network Mode (Tailscale)](#network-mode-tailscale)
+- [Verification](#verification)
+- [Upgrading](#upgrading)
+- [Uninstallation](#uninstallation)
+- [Troubleshooting Installation](#troubleshooting-installation)
+
+---
+
+## Prerequisites
+
+### Required
+
+- **Python 3.11+**: Check with `python --version` or `python3 --version`
+- **pip**: Python package installer (usually included with Python)
+- **Git**: For cloning the repository
+- **Claude Code CLI**: For using the MCP server with Claude
+
+### Recommended
+
+- **4GB+ RAM**: 8GB recommended for faster embedding generation
+- **SSD Storage**: ~1GB free space for embeddings and model cache
+
+### Platform-Specific Notes
+
+#### Linux
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install python3.11 python3.11-venv python3-pip git
+
+# Fedora
+sudo dnf install python3.11 python3-pip git
+```
+
+#### macOS
+```bash
+# Using Homebrew
+brew install python@3.11 git
+```
+
+#### Windows
+- Install Python 3.11+ from [python.org](https://www.python.org/downloads/)
+- **Recommended**: Use WSL2 for best compatibility
+  ```powershell
+  wsl --install
+  ```
+
+---
+
+## Quick Install (Recommended)
+
+The fastest way to get started - a single setup command handles everything:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+cd stm32-agents
+
+# 2. Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows PowerShell
+
+# 3. Install the package
+pip install -e .
+
+# 4. Run complete setup (configures MCP, installs agents, ingests docs)
+stm32-setup
+```
+
+That's it! The `stm32-setup` command automatically:
+- Configures the MCP server for Claude Code
+- Installs all agents to `~/.claude/agents/`
+- Installs slash commands to `~/.claude/commands/`
+- Ingests documentation into ChromaDB
+- Verifies the installation
+
+### Verify It Works
+
+```bash
+# Check installation status
+stm32-setup --status
+
+# Or restart Claude Code and try:
+/stm32 How do I configure UART with DMA?
+```
+
+---
+
+## What Gets Installed
+
+| Component | Location | Installed By |
+|-----------|----------|--------------|
+| Python package | Site-packages or editable | `pip install` |
+| MCP server config | `~/.claude/mcp.json` | `stm32-setup` |
+| Agent definitions | `~/.claude/agents/*.md` | `stm32-setup` |
+| Slash commands | `~/.claude/commands/*.md` | `stm32-setup` |
+| Vector database | `data/chroma_db/` | `stm32-setup --ingest` |
+| CLI commands | `stm32-*` | `pip install` |
+
+### CLI Commands Available After Install
+
+| Command | Description |
+|---------|-------------|
+| `stm32-setup` | Complete setup wizard |
+| `stm32-setup --status` | Show installation status |
+| `stm32-setup --verify` | Verify installation |
+| `stm32-server` | Start the MCP server |
+| `stm32-ingest` | Ingest documentation |
+| `stm32-search` | Search from command line |
+| `stm32-validate` | Full system validation |
+
+---
+
+## Alternative Installation Methods
+
+### Option A: Selective Setup
+
+Run only specific setup steps:
+
+```bash
+# Only configure MCP server
+stm32-setup --mcp-only
+
+# Only install agents
+stm32-setup --agents
+
+# Only ingest documentation
+stm32-setup --ingest
+
+# Re-ingest (clear and rebuild)
+stm32-setup --ingest --clear
+```
+
+### Option B: Download Pre-built Database
+
+Skip the 5-10 minute ingestion process by downloading a pre-built database:
+
+```bash
+# Clone and install
+git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+cd stm32-agents
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+
+# Download pre-built database (if available in releases)
+python scripts/download_db.py
+
+# Run setup without ingestion
+stm32-setup --mcp-only
+stm32-setup --agents
+```
+
+### Option C: Install from GitHub (Without Clone)
+
+```bash
+# Create project directory
+mkdir stm32-docs-server && cd stm32-docs-server
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install from GitHub
+pip install git+https://github.com/YOUR_USERNAME/stm32-agents.git
+
+# Clone to get documentation files
+git clone https://github.com/YOUR_USERNAME/stm32-agents.git source
+
+# Set project directory for setup
+export STM32_PROJECT_DIR=$(pwd)/source
+
+# Run setup
+stm32-setup
+```
+
+### Option D: Development Installation
+
+For contributors and customization:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+cd stm32-agents
+python -m venv .venv
+source .venv/bin/activate
+
+# Install with development dependencies
+pip install -e ".[dev]"
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run setup
+stm32-setup
+```
+
+---
+
+## Post-Installation Setup
+
+### Automatic Setup (Default)
+
+The `stm32-setup` command handles everything. Just run it after `pip install`.
+
+### Manual Configuration (If Needed)
+
+If you prefer manual control, here's what `stm32-setup` does:
+
+#### 1. MCP Configuration
+
+Create/update `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "/path/to/stm32-agents/.venv/bin/python",
+      "args": ["/path/to/stm32-agents/mcp_server/server.py"],
+      "env": {
+        "STM32_SERVER_MODE": "local",
+        "STM32_LOG_LEVEL": "INFO",
+        "PYTHONPATH": "/path/to/stm32-agents"
+      },
+      "description": "STM32 documentation search. First startup takes ~90s for model loading."
+    }
+  }
+}
+```
+
+#### 2. Agent Installation
+
+```bash
+mkdir -p ~/.claude/agents ~/.claude/commands
+cp .claude/agents/*.md ~/.claude/agents/
+cp .claude/commands/*.md ~/.claude/commands/
+```
+
+#### 3. Document Ingestion
+
+```bash
+python scripts/ingest_docs.py --clear
+```
+
+---
+
+## Claude Code Integration
+
+### Local Mode (Default)
+
+Local mode uses stdio transport - Claude Code launches the server directly.
+
+After running `stm32-setup`, restart Claude Code and test:
+
+```
+/stm32 How do I configure UART?
+/stm32-hal HAL_GPIO_Init
+/stm32-init SPI master mode
+/stm32-debug UART not receiving
+```
+
+### Using the Agents
+
+Specialized agents are automatically triggered based on keywords:
+
+| Agent | Triggered By | Purpose |
+|-------|--------------|---------|
+| Firmware Core | HAL, LL, timer, DMA, interrupt | Core firmware development |
+| Peripheral Comm | UART, SPI, I2C, CAN, USB | Communication protocols |
+| Peripheral Analog | ADC, DAC, OPAMP | Analog peripherals |
+| Power Management | sleep, stop, standby, low power | Power optimization |
+| Debug | HardFault, debugging, trace | Troubleshooting |
+| Security | TrustZone, crypto, secure boot | Security features |
+| Safety | IEC 61508, Class B, self-test | Safety certification |
+
+---
+
+## Network Mode (Tailscale)
+
+Access the server from multiple machines using SSE transport over Tailscale.
+
+### Server Setup
+
+```bash
+# Install Tailscale
+# See: https://tailscale.com/download
+
+# Start server in network mode
+stm32-server --mode network --port 8765
+
+# Or via environment variable
+STM32_SERVER_MODE=network stm32-server
+```
+
+### Client Configuration
+
+On each client machine, add to `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "type": "sse",
+      "url": "http://YOUR_TAILSCALE_IP:8765/sse",
+      "description": "STM32 documentation server (network mode)"
+    }
+  }
+}
+```
+
+### Test Connection
+
+```bash
+curl http://YOUR_TAILSCALE_IP:8765/health
+```
+
+---
+
+## Verification
+
+### Quick Check
+
+```bash
+# Show installation status
+stm32-setup --status
+
+# Verify all components
+stm32-setup --verify
+```
+
+### Detailed Validation
+
+```bash
+# Full system validation
+stm32-validate
+
+# Verify MCP specifically
+stm32-verify
+
+# Test search quality
+stm32-test-retrieval
+```
+
+### Manual Testing
+
+```bash
+# Test imports
+python -c "from mcp_server.server import mcp; print('MCP server OK')"
+
+# Test database
+python -c "
+from storage.chroma_store import STM32ChromaStore
+store = STM32ChromaStore('data/chroma_db/')
+print(f'Documents indexed: {store.count()}')
+"
+
+# Test search
+python -c "
+from storage.chroma_store import STM32ChromaStore
+store = STM32ChromaStore('data/chroma_db/')
+results = store.search('UART DMA', n_results=3)
+for r in results:
+    print(f'{r[\"score\"]:.3f}: {r[\"content\"][:80]}...')
+"
+```
+
+---
+
+## Upgrading
+
+### From Git
+
+```bash
+cd stm32-agents
+git pull origin main
+source .venv/bin/activate
+pip install -e . --upgrade
+
+# Re-run setup to update agents and re-ingest if needed
+stm32-setup --force
+```
+
+### From pip
+
+```bash
+pip install --upgrade git+https://github.com/YOUR_USERNAME/stm32-agents.git
+stm32-setup --force
+```
+
+### Update Database Only
+
+```bash
+# Re-ingest documentation
+stm32-setup --ingest --clear
+
+# Or download latest pre-built
+python scripts/download_db.py --force
+```
+
+---
+
+## Uninstallation
+
+### Using the Uninstall Command
+
+```bash
+# Remove MCP config, agents, and commands from ~/.claude
+stm32-setup --uninstall
+
+# Then uninstall the Python package
+pip uninstall stm32-mcp-docs
+```
+
+### Manual Removal
+
+```bash
+# Remove from MCP configuration
+# Edit ~/.claude/mcp.json and remove "stm32-docs" entry
+
+# Remove agents
+rm ~/.claude/agents/{router,firmware,power,debug,safety,bootloader,security}*.md
+rm ~/.claude/agents/{peripheral,hardware,triage}*.md
+
+# Remove commands
+rm ~/.claude/commands/stm32*.md
+
+# Uninstall package
+pip uninstall stm32-mcp-docs
+
+# Remove project directory
+rm -rf /path/to/stm32-agents
+```
+
+### Clean Data Only
+
+```bash
+# Remove vector database (keeps installation)
+rm -rf data/chroma_db/
+
+# Remove logs
+rm -rf logs/*.log
+```
+
+---
+
+## Troubleshooting Installation
+
+### "stm32-setup: command not found"
+
+The package isn't installed or not in PATH:
+
+```bash
+# Ensure virtual environment is active
+source .venv/bin/activate
+
+# Reinstall
+pip install -e .
+```
+
+### "No markdown files found"
+
+The documentation files are missing:
+
+```bash
+# Check markdowns directory
+ls markdowns/
+
+# If missing, you may have installed via pip without cloning
+# Clone to get the documentation:
+git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+```
+
+### MCP Server Not Connecting
+
+1. Check configuration:
+   ```bash
+   stm32-setup --status
+   ```
+
+2. Verify paths in `~/.claude/mcp.json` are correct
+
+3. Test server directly:
+   ```bash
+   stm32-server --validate
+   ```
+
+4. Check logs:
+   ```bash
+   cat logs/mcp_server.log
+   ```
+
+### Slow First Request
+
+The first request takes ~90 seconds due to ML model loading. This is normal. Subsequent requests are fast (<100ms).
+
+### Import Errors
+
+```bash
+# Verify installation
+pip list | grep stm32
+
+# Reinstall
+pip install -e . --force-reinstall
+```
+
+---
+
+## Environment Variables Reference
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STM32_SERVER_MODE` | Server mode: `local`, `network`, `hybrid` | `local` |
+| `STM32_HOST` | Network bind address | `0.0.0.0` |
+| `STM32_PORT` | Network port | `8765` |
+| `STM32_CHROMA_DB_PATH` | ChromaDB storage path | `data/chroma_db/` |
+| `STM32_COLLECTION_NAME` | ChromaDB collection name | `stm32_docs` |
+| `STM32_EMBEDDING_MODEL` | Sentence transformer model | `all-MiniLM-L6-v2` |
+| `STM32_CHUNK_SIZE` | Target chunk size (tokens) | `1000` |
+| `STM32_CHUNK_OVERLAP` | Chunk overlap (tokens) | `150` |
+| `STM32_LOG_LEVEL` | Logging level | `INFO` |
+| `STM32_PROJECT_DIR` | Override project directory | Auto-detected |
+
+See [.env.example](.env.example) for the complete list.
+
+---
+
+## Next Steps
+
+After installation:
+
+1. **Try the slash commands**: `/stm32`, `/stm32-hal`, `/stm32-init`, `/stm32-debug`
+2. **Explore Agents**: Check [docs/AGENT_QUICK_REFERENCE.md](docs/AGENT_QUICK_REFERENCE.md)
+3. **Review Architecture**: See [ARCHITECTURE.md](ARCHITECTURE.md)
+4. **Run Tests**: Execute `pytest tests/` to verify everything works
+
+## Getting Help
+
+- **Troubleshooting**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Documentation**: Check the [docs/](docs/) directory
+- **Issues**: Open a GitHub issue for bugs or questions
