@@ -1,0 +1,8 @@
+{
+  "version": "v1.2.0",
+  "chunks": 13815,
+  "sha256": "1c28734c790f06a23834bc3c039b96b12831799057390e46adc372eddbbdec77",
+  "embedding_model": "all-MiniLM-L6-v2",
+  "build_timestamp": "2026-01-09T19:15:01.673263+00:00",
+  "source_files": 80
+}

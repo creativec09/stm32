@@ -175,7 +175,7 @@ class Settings(BaseSettings):
     # =========================================================================
 
     GITHUB_REPO: str = Field(
-        default="creativec09/stm32-agents",
+        default="creativec09/stm32",
         description="GitHub repository for downloading pre-built database",
     )
 

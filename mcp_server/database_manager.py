@@ -52,7 +52,7 @@ class DatabaseManager:
     """
 
     # GitHub configuration
-    GITHUB_REPO = "creativec09/stm32-agents"
+    GITHUB_REPO = "creativec09/stm32"
     DB_ASSET_NAME = "chromadb-stm32-docs.tar.gz"
     DB_MANIFEST_NAME = "chromadb-manifest.json"
 

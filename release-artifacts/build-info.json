@@ -1,0 +1,14 @@
+{
+  "version": "v1.2.0",
+  "chunks": 13815,
+  "source_files": 80,
+  "embedding_model": "all-MiniLM-L6-v2",
+  "build_timestamp": "2026-01-09T19:15:01.673263+00:00",
+  "sha256": "1c28734c790f06a23834bc3c039b96b12831799057390e46adc372eddbbdec77",
+  "archive_name": "chromadb-stm32-docs.tar.gz",
+  "manifest_name": "chromadb-manifest.json",
+  "source_dir": "/mnt/c/Users/creat/Claude/stm32-agents/mcp_server/markdowns",
+  "python_version": "3.12.3 (main, Nov  6 2025, 13:44:16) [GCC 13.3.0]",
+  "clean_build": true,
+  "validated": true
+}
