@@ -104,13 +104,13 @@ def get_interrupt_example(
 
     search_query = " ".join(query_parts[:10])
 
-    # Search for code examples
+    # Search for code examples - lower threshold for better recall
     results = store.search(
         query=search_query,
         n_results=6,
         peripheral=periph_filter,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
     # Also search for callback functions specifically
@@ -119,8 +119,17 @@ def get_interrupt_example(
         n_results=4,
         peripheral=periph_filter,
         require_code=True,
-        min_score=0.3
+        min_score=0.1
     )
+
+    # Fallback: broader search if few results
+    if len(results) < 3:
+        fallback = store.search(
+            query=f"{peripheral} interrupt example",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
 
     # Combine and deduplicate
     all_results = results + callback_results
@@ -193,13 +202,13 @@ def get_dma_example(
 
     search_query = " ".join(query_parts[:10])
 
-    # Search for DMA examples
+    # Search for DMA examples - lower threshold
     results = store.search(
         query=search_query,
         n_results=6,
         peripheral=periph_filter,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
     # Also search in DMA peripheral docs
@@ -208,8 +217,17 @@ def get_dma_example(
         n_results=4,
         peripheral=Peripheral.DMA,
         require_code=True,
-        min_score=0.3
+        min_score=0.1
     )
+
+    # Fallback: broader DMA search
+    if len(results) < 3:
+        fallback = store.search(
+            query=f"DMA {peripheral} transfer configuration",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
 
     # Combine and deduplicate
     all_results = results + dma_results
@@ -279,31 +297,41 @@ def get_low_power_example(
 
     search_query = " ".join(query_parts[:10])
 
-    # Search for low power examples
+    # Search for low power examples - lower threshold
     results = store.search(
         query=search_query,
         n_results=8,
         peripheral=Peripheral.PWR,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
-    # Fallback without code requirement
-    if not results:
-        results = store.search(
+    # If few results, try without code requirement
+    if len(results) < 3:
+        additional = store.search(
             query=search_query,
             n_results=8,
             peripheral=Peripheral.PWR,
-            min_score=0.2
+            min_score=0.1
         )
+        results.extend(additional)
 
     # Also search general documentation
     general_results = store.search(
         query=f"low power {mode}".strip(),
         n_results=4,
         require_code=True,
-        min_score=0.3
+        min_score=0.1
     )
+
+    # Fallback: broader search
+    if len(results) < 3:
+        fallback = store.search(
+            query="low power sleep stop standby",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
 
     # Combine and deduplicate
     all_results = results + general_results
@@ -384,13 +412,13 @@ def get_callback_example(
 
     search_query = " ".join(query_parts[:10])
 
-    # Search for callback examples
+    # Search for callback examples - lower threshold
     results = store.search(
         query=search_query,
         n_results=6,
         peripheral=periph_filter,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
     # Also search HAL guides
@@ -399,8 +427,17 @@ def get_callback_example(
         n_results=4,
         doc_type=DocType.HAL_GUIDE,
         require_code=True,
-        min_score=0.3
+        min_score=0.1
     )
+
+    # Fallback: broader callback search
+    if len(results) < 3:
+        fallback = store.search(
+            query=f"{peripheral} callback HAL",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
 
     # Combine and deduplicate
     all_results = results + hal_results
@@ -488,24 +525,33 @@ def get_peripheral_init_template(
 
     search_query = " ".join(query_parts[:12])
 
-    # Search for initialization examples
+    # Search for initialization examples - lower threshold
     results = store.search(
         query=search_query,
         n_results=8,
         peripheral=periph_filter,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
-    # Fallback without code requirement
+    # If few results, try without code requirement
     if len(results) < 3:
         additional = store.search(
             query=f"{peripheral} init {mode}".strip(),
             n_results=5,
             peripheral=periph_filter,
-            min_score=0.2
+            min_score=0.1
         )
         results.extend(additional)
+
+    # Final fallback: broad search
+    if len(results) < 3:
+        fallback = store.search(
+            query=f"{peripheral} initialization example",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
 
     # Remove duplicates
     seen_content = set()

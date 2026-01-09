@@ -106,34 +106,47 @@ def search_hal_function(
     # Include function name and common documentation keywords
     search_query = f"{function_name} function parameters return"
 
-    # First try searching in HAL guides
+    # First try searching in HAL guides with peripheral filter
     results = store.search(
         query=search_query,
-        n_results=5,
+        n_results=8,
         doc_type=DocType.HAL_GUIDE,
         peripheral=peripheral,
-        min_score=0.3
+        min_score=0.1
     )
 
-    # If no HAL guide results, search all documentation
-    if not results:
-        results = store.search(
+    # If few results, try without doc_type filter
+    if len(results) < 3:
+        additional = store.search(
             query=search_query,
             n_results=5,
             peripheral=peripheral,
-            require_code=True,
-            min_score=0.2
+            min_score=0.1
         )
+        results.extend(additional)
 
-    # Fallback to general search
-    if not results:
-        results = store.search(
+    # If still few results, try just the function name
+    if len(results) < 3:
+        additional = store.search(
             query=function_name,
             n_results=5,
-            min_score=0.2
+            min_score=0.05  # Very low threshold as final fallback
         )
+        results.extend(additional)
 
-    return _format_results(results, f"HAL Function: {function_name}")
+    # Deduplicate results
+    seen = set()
+    unique_results = []
+    for r in results:
+        content_hash = hash(r.get('content', '')[:200])
+        if content_hash not in seen:
+            seen.add(content_hash)
+            unique_results.append(r)
+
+    # Sort by score and take top results
+    unique_results.sort(key=lambda x: x.get('score', 0), reverse=True)
+
+    return _format_results(unique_results[:5], f"HAL Function: {function_name}")
 
 
 def search_error_solution(
@@ -196,12 +209,12 @@ def search_error_solution(
 
     search_query = " ".join(search_terms[:8])  # Limit query length
 
-    # Search for troubleshooting content
+    # Search for troubleshooting content - lower threshold for better recall
     results = store.search(
         query=search_query,
         n_results=8,
         peripheral=periph_filter,
-        min_score=0.2
+        min_score=0.1
     )
 
     # Also search errata documents for known issues
@@ -210,8 +223,17 @@ def search_error_solution(
         n_results=3,
         doc_type=DocType.ERRATA,
         peripheral=periph_filter,
-        min_score=0.3
+        min_score=0.1
     )
+
+    # Fallback: broad search if few results
+    if len(results) < 3:
+        fallback = store.search(
+            query=error_description,
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
 
     # Combine results, prioritizing troubleshooting content
     combined_results = results + errata_results
@@ -285,23 +307,45 @@ def search_initialization_sequence(
 
     search_query = " ".join(query_parts[:8])
 
-    # Search for code examples with initialization
+    # Search for code examples with initialization - lower threshold
     results = store.search(
         query=search_query,
         n_results=8,
         peripheral=periph_filter,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
-    # If no code results, try without require_code
-    if not results:
-        results = store.search(
+    # If few results, try without require_code
+    if len(results) < 3:
+        additional = store.search(
             query=search_query,
             n_results=8,
             peripheral=periph_filter,
-            min_score=0.2
+            min_score=0.1
         )
+        results.extend(additional)
+
+    # Final fallback: simpler query without filters
+    if len(results) < 3:
+        fallback = store.search(
+            query=f"{peripheral} init example code",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
+
+    # Deduplicate
+    seen = set()
+    unique_results = []
+    for r in results:
+        content_hash = hash(r.get('content', '')[:200])
+        if content_hash not in seen:
+            seen.add(content_hash)
+            unique_results.append(r)
+
+    unique_results.sort(key=lambda x: x.get('score', 0), reverse=True)
+    results = unique_results[:8]
 
     title = f"Initialization Sequence: {peripheral}"
     if use_case:
@@ -360,23 +404,45 @@ def search_clock_configuration(
 
     search_query = " ".join(query_parts[:10])
 
-    # Search with RCC peripheral filter
+    # Search with RCC peripheral filter - lower threshold
     results = store.search(
         query=search_query,
         n_results=8,
         peripheral=Peripheral.RCC,
         require_code=True,
-        min_score=0.2
+        min_score=0.1
     )
 
-    # Fallback without code requirement
-    if not results:
-        results = store.search(
+    # If few results, try without code requirement
+    if len(results) < 3:
+        additional = store.search(
             query=search_query,
             n_results=8,
             peripheral=Peripheral.RCC,
-            min_score=0.2
+            min_score=0.1
         )
+        results.extend(additional)
+
+    # Fallback: broader clock search
+    if len(results) < 3:
+        fallback = store.search(
+            query="clock system PLL configuration",
+            n_results=5,
+            min_score=0.05
+        )
+        results.extend(fallback)
+
+    # Deduplicate
+    seen = set()
+    unique_results = []
+    for r in results:
+        content_hash = hash(r.get('content', '')[:200])
+        if content_hash not in seen:
+            seen.add(content_hash)
+            unique_results.append(r)
+
+    unique_results.sort(key=lambda x: x.get('score', 0), reverse=True)
+    results = unique_results[:8]
 
     title = "Clock Configuration"
     if target_frequency:

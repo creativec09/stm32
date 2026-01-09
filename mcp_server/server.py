@@ -328,7 +328,7 @@ def search_stm32_docs(
     # Clamp results to valid range
     num_results = max(1, min(num_results, settings.MAX_SEARCH_RESULTS))
 
-    # Execute search
+    # Execute search with configured threshold
     results = store.search(
         query=query,
         n_results=num_results,
@@ -337,8 +337,16 @@ def search_stm32_docs(
         min_score=settings.MIN_RELEVANCE_SCORE
     )
 
+    # Fallback: if no results with filters, try broader search
+    if not results and (periph_filter or require_code):
+        results = store.search(
+            query=query,
+            n_results=num_results,
+            min_score=0.05  # Very low threshold for fallback
+        )
+
     if not results:
-        return f"No documentation found for query: {query}"
+        return f"No documentation found for query: {query}. Try rephrasing your search or use broader terms."
 
     # Format output for readability
     output = []
@@ -480,8 +488,17 @@ def get_code_examples(
         n_results=num_examples
     )
 
+    # Fallback: broader search if no code examples found
     if not results:
-        return f"No code examples found for: {topic}"
+        results = store.search(
+            query=topic,
+            n_results=num_examples,
+            peripheral=periph_filter,
+            min_score=0.05  # Very low threshold for fallback
+        )
+
+    if not results:
+        return f"No code examples found for: {topic}. Try broader search terms like the peripheral name."
 
     # Format output
     output = [f"# Code Examples: {topic}\n"]

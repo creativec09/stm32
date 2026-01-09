@@ -307,8 +307,8 @@ class Settings(BaseSettings):
     )
 
     MIN_RELEVANCE_SCORE: float = Field(
-        default=0.3,
-        description="Minimum relevance score to include in results",
+        default=0.1,
+        description="Minimum relevance score to include in results (lowered to improve recall)",
         ge=0.0,
         le=1.0,
     )

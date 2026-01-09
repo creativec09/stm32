@@ -161,14 +161,64 @@ When updating the user's project CLAUDE.md, add the following content:
 
 This project uses the STM32 MCP documentation server for embedded development assistance.
 
-### IMPORTANT: Always Use MCP Tools for STM32 Questions
+### CRITICAL: Always Use Agents, Never Direct MCP Calls
 
-When answering ANY question about STM32 development:
-1. ALWAYS search the documentation first using MCP tools
-2. NEVER rely solely on training knowledge for STM32-specific details
-3. Verify register names, function signatures, and configurations
+When answering STM32 questions, NEVER call MCP tools directly in the main session. This burns context with hundreds of lines of raw results. Instead:
 
-### Available MCP Tools
+1. **ALWAYS use the Task tool** to invoke the `router` agent (or appropriate specialist agent)
+2. The agent handles MCP queries in its own context window
+3. The agent returns a concise, summarized answer
+4. This keeps the main session context clean and efficient
+
+**Example - Correct Approach:**
+```
+User: "How do I configure UART with DMA?"
+
+Claude: [Uses Task tool to invoke router agent]
+  -> Router agent calls mcp__stm32-docs__get_init_sequence("UART", "DMA")
+  -> Router agent summarizes the results
+  -> Returns: "Here's how to configure UART with DMA: [concise summary with code]"
+```
+
+**Example - WRONG Approach (Never Do This):**
+```
+User: "How do I configure UART with DMA?"
+
+Claude: [Directly calls mcp__stm32-docs__get_init_sequence]
+  -> Returns 500+ lines of raw documentation
+  -> Burns main session context
+  -> User has to scroll through walls of text
+```
+
+### Agent Entry Points
+
+| Agent | When to Use |
+|-------|-------------|
+| `router` | **DEFAULT** - Routes to the right specialist, handles general queries |
+| `firmware` | General firmware, HAL/LL, timers, interrupts |
+| `peripheral-comm` | UART, SPI, I2C, CAN, USB questions |
+| `peripheral-analog` | ADC, DAC, OPAMP questions |
+| `debug` | Debugging, HardFault, troubleshooting |
+| `power` | Low power modes, battery optimization |
+| `bootloader` | Bootloader, firmware updates, IAP |
+| `security` | Secure boot, TrustZone, encryption |
+| `safety` | Safety-critical, IEC 61508, ISO 26262 |
+
+### How to Invoke Agents
+
+Use the Task tool with this pattern:
+```
+Task: "router" agent
+Input: [user's STM32 question]
+```
+
+The router agent will:
+1. Analyze the query
+2. Either handle it directly or delegate to a specialist
+3. Query MCP tools as needed
+4. Return a summarized, actionable answer
+
+### Available MCP Tools (For Agent Use Only)
 
 | Tool | When to Use |
 |------|-------------|
@@ -220,21 +270,17 @@ When answering ANY question about STM32 development:
 
 ### Best Practices
 
-1. **Be specific in queries**
-   - Good: "How to configure UART2 with DMA RX on STM32F4?"
-   - Bad: "UART not working"
+1. **Always use agents** - Never call MCP tools directly in the main session
+2. **Be specific in queries** - Include STM32 family, peripheral, and use case
+3. **Let the router decide** - The router agent knows which specialist to use
+4. **Trust agent summaries** - Agents condense documentation into actionable answers
 
-2. **Include context**
-   - Mention STM32 family when relevant (F4, H7, G4, etc.)
-   - Specify HAL vs LL preference
-   - Include error messages exactly
+### Quick Reference
 
-3. **Use appropriate tools**
-   - For code: `get_code_examples` or `get_init_sequence`
-   - For errors: `troubleshoot_error`
-   - For functions: `lookup_hal_function`
+For any STM32 question, use this pattern:
+```
+[Invoke Task tool with "router" agent and the user's question]
+```
 
-4. **Verify before using**
-   - Always confirm register names match your specific chip
-   - Check HAL library version compatibility
+The router will handle everything - MCP queries, specialist delegation, and summarization.
 ```
