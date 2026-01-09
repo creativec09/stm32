@@ -5,7 +5,8 @@ This guide provides detailed installation instructions for the STM32 MCP Documen
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Quick Install (Recommended)](#quick-install-recommended)
+- [Private Distribution via uvx (Recommended)](#private-distribution-via-uvx-recommended)
+- [Quick Install (Clone-and-Go)](#quick-install-clone-and-go)
 - [What Gets Installed](#what-gets-installed)
 - [Alternative Installation Methods](#alternative-installation-methods)
 - [Post-Installation Setup](#post-installation-setup)
@@ -60,7 +61,92 @@ brew install python@3.11 git
 
 ---
 
-## Quick Install (Recommended)
+## Private Distribution via uvx (Recommended)
+
+The fastest way to use this MCP server from a private repository is via `uvx`. This method:
+- Automatically installs dependencies
+- No need to clone the repository
+- Works with version tags for reproducible installations
+- Caches the package for fast subsequent launches
+
+### Prerequisites
+
+1. **Install uv** (a fast Python package installer and runner):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **GitHub Personal Access Token (PAT)** with `repo` scope:
+   - Go to GitHub Settings > Developer settings > Personal access tokens
+   - Generate a new token with `repo` scope
+   - Save the token securely
+
+### Add to Claude Code
+
+```bash
+# Replace TOKEN with your GitHub Personal Access Token
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+### Using a Specific Version Tag
+
+For production use, pin to a specific version:
+
+```bash
+# Install from a tagged release (recommended for stability)
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.0.0 stm32-mcp-docs
+```
+
+Available tags:
+- `v1.0.0` - Initial stable release
+
+### Environment Variables
+
+If you need to pass environment variables to the MCP server, add them to your Claude config manually:
+
+Edit `~/.claude.json`:
+```json
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "uvx",
+      "args": ["--from", "git+https://TOKEN@github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"],
+      "env": {
+        "STM32_SERVER_MODE": "local",
+        "STM32_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+### Verify Installation
+
+After adding to Claude Code:
+
+```bash
+# List configured MCP servers
+claude mcp list
+
+# Restart Claude Code, then test with:
+/stm32 How do I configure UART with DMA?
+```
+
+### Updating
+
+To update to a newer version:
+
+```bash
+# Remove old configuration
+claude mcp remove stm32-docs -s user
+
+# Add with new version
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.1.0 stm32-mcp-docs
+```
+
+---
+
+## Quick Install (Clone-and-Go)
 
 The repository includes a **pre-built ChromaDB vector database** (~190MB via Git LFS) with 13,800+ indexed document chunks. No ingestion required - just clone and go!
 

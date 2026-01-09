@@ -89,11 +89,32 @@ Or ask naturally - the agents are triggered automatically:
 
 ## Installation
 
-### Quick Install (Recommended)
+### Quick Install via uvx (Recommended for Private Repository)
+
+For installation from the private GitHub repository using `uvx`:
+
+#### Prerequisites
+- Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- GitHub Personal Access Token (PAT) with `repo` scope
+
+#### Add to Claude Code
+```bash
+# Replace TOKEN with your GitHub Personal Access Token
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+This installs and runs the MCP server directly from the private repository without needing to clone it first.
+
+#### With Specific Version Tag
+```bash
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.0.0 stm32-mcp-docs
+```
+
+### Alternative: pip Install
 
 ```bash
-# Install the package
-pip install git+https://github.com/creativec09/stm32-agents.git
+# Install the package (requires GitHub authentication)
+pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
 
 # Register with Claude Code
 claude mcp add stm32-docs -s user -- python -m mcp_server

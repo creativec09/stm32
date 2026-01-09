@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "stm32-docs": {
-      "command": "python",
-      "args": ["-m", "mcp_server"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"],
       "env": {
         "STM32_SERVER_MODE": "local",
         "STM32_LOG_LEVEL": "INFO"

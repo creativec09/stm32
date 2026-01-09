@@ -107,6 +107,9 @@ docs = [
 ]
 
 [project.scripts]
+# MCP server entry point - used by uvx for private distribution
+stm32-mcp-docs = "mcp_server.server:main"
+
 # Primary setup command - the main entry point for new users
 stm32-setup = "scripts.setup:main"
 
