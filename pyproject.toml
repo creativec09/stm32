@@ -126,11 +126,11 @@ stm32-test-retrieval = "scripts.test_retrieval:main"
 stm32-search = "scripts.search:main"
 
 [project.urls]
-Homepage = "https://github.com/YOUR_USERNAME/stm32-agents"
-Documentation = "https://github.com/YOUR_USERNAME/stm32-agents#readme"
-Repository = "https://github.com/YOUR_USERNAME/stm32-agents.git"
-Issues = "https://github.com/YOUR_USERNAME/stm32-agents/issues"
-Changelog = "https://github.com/YOUR_USERNAME/stm32-agents/releases"
+Homepage = "https://github.com/creativec09/stm32-agents"
+Documentation = "https://github.com/creativec09/stm32-agents#readme"
+Repository = "https://github.com/creativec09/stm32-agents.git"
+Issues = "https://github.com/creativec09/stm32-agents/issues"
+Changelog = "https://github.com/creativec09/stm32-agents/releases"
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]

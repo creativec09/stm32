@@ -65,7 +65,7 @@ The fastest way to get started - a single setup command handles everything:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
 # 2. Create and activate virtual environment
@@ -150,7 +150,7 @@ Skip the 5-10 minute ingestion process by downloading a pre-built database:
 
 ```bash
 # Clone and install
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
@@ -174,10 +174,10 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install from GitHub
-pip install git+https://github.com/YOUR_USERNAME/stm32-agents.git
+pip install git+https://github.com/creativec09/stm32-agents.git
 
 # Clone to get documentation files
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git source
+git clone https://github.com/creativec09/stm32-agents.git source
 
 # Set project directory for setup
 export STM32_PROJECT_DIR=$(pwd)/source
@@ -191,7 +191,7 @@ stm32-setup
 For contributors and customization:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 python -m venv .venv
 source .venv/bin/activate
@@ -394,7 +394,7 @@ stm32-setup --force
 ### From pip
 
 ```bash
-pip install --upgrade git+https://github.com/YOUR_USERNAME/stm32-agents.git
+pip install --upgrade git+https://github.com/creativec09/stm32-agents.git
 stm32-setup --force
 ```
 
@@ -478,7 +478,7 @@ ls markdowns/
 
 # If missing, you may have installed via pip without cloning
 # Clone to get the documentation:
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 ```
 
 ### MCP Server Not Connecting

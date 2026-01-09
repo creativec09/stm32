@@ -43,7 +43,7 @@ An MCP (Model Context Protocol) server that provides semantic search over STM32 
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
 # Create and activate virtual environment
@@ -87,14 +87,14 @@ Or ask naturally - the agents are triggered automatically:
 ### Method 1: Install from GitHub (Recommended)
 
 ```bash
-pip install git+https://github.com/YOUR_USERNAME/stm32-agents.git
+pip install git+https://github.com/creativec09/stm32-agents.git
 ```
 
 ### Method 2: Install from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
 # Create virtual environment
@@ -112,7 +112,7 @@ pip install -e ".[dev]"
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
 # Create virtual environment
@@ -319,7 +319,7 @@ stm32-agents/
 
 ```bash
 # Clone and setup
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
 # Create virtual environment
@@ -451,4 +451,4 @@ Built with:
 - Check the [Documentation Index](docs/INDEX.md)
 - Review [Getting Started Guide](docs/GETTING_STARTED.md)
 - See [Testing Guide](docs/TESTING.md) for validation
-- Open an [Issue](https://github.com/YOUR_USERNAME/stm32-agents/issues) for bugs or feature requests
+- Open an [Issue](https://github.com/creativec09/stm32-agents/issues) for bugs or feature requests

@@ -88,7 +88,7 @@ Look for issues labeled `good first issue` for beginner-friendly tasks:
 # 1. Fork the repository on GitHub
 
 # 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/stm32-agents.git
+git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
 # 3. Add upstream remote
