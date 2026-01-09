@@ -1,10 +1,10 @@
 # Claude Code Integration Guide
 
-This guide explains how to configure Claude Code to use the STM32 documentation MCP server for intelligent STM32 development assistance.
+This guide explains how to configure Claude Code to use the STM32 documentation MCP server.
 
 ## Overview
 
-The STM32 Multi-Agent Development System integrates with Claude Code through the Model Context Protocol (MCP). This enables Claude Code to:
+The STM32 MCP Documentation Server integrates with Claude Code through the Model Context Protocol (MCP). This enables Claude Code to:
 
 - Search STM32 documentation using semantic search
 - Retrieve peripheral-specific documentation
@@ -13,65 +13,129 @@ The STM32 Multi-Agent Development System integrates with Claude Code through the
 - Troubleshoot common errors
 - Access clock configuration guides
 
-## Configuration
+## Installation
 
-### Recommended: Using Claude CLI
+### Recommended: uvx Installation (One Command)
 
-The recommended way to configure the MCP server is using the Claude CLI:
+The simplest way to install is via `uvx`:
 
 ```bash
+# For private repository - include your GitHub Personal Access Token
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+Replace `TOKEN` with your GitHub PAT (requires `repo` scope).
+
+**What happens on first run:**
+1. 16 STM32 agents are auto-installed to `~/.claude/agents/`
+2. Vector database (13,815 chunks) is built from 80 bundled docs
+3. Marker files prevent re-installation on subsequent runs
+
+First run takes 5-10 minutes. Subsequent starts are instant.
+
+### Alternative: pip Installation
+
+```bash
+# Install the package
+pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
+
+# Register with Claude Code
 claude mcp add stm32-docs -s user -- python -m mcp_server
 ```
 
-This registers the server at the user level, making it available across all projects.
+### Alternative: Development Installation
 
-### Alternative: Project-Level Configuration (`.mcp.json`)
+```bash
+# Clone repository
+git clone https://github.com/creativec09/stm32-agents.git
+cd stm32-agents
 
-The repository includes a `.mcp.json` file at the project root that Claude Code automatically detects:
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install
+pip install -e .
+
+# Register with Claude Code
+claude mcp add stm32-docs -s user -- python -m mcp_server
+```
+
+### Manual Configuration
+
+If the `claude` CLI is not available, manually edit `~/.claude.json`:
 
 ```json
 {
   "mcpServers": {
     "stm32-docs": {
-      "command": "python",
-      "args": ["-m", "mcp_server"],
-      "env": {
-        "STM32_SERVER_MODE": "local",
-        "STM32_LOG_LEVEL": "INFO"
-      }
+      "command": "uvx",
+      "args": ["--from", "git+https://TOKEN@github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"]
     }
   }
 }
 ```
 
-This provides project-scoped access when working in the stm32-agents directory.
+## Auto-Installed Agents (16)
 
-### Network Configuration (Tailscale)
+On first run, the server automatically installs 16 specialized agents to `~/.claude/agents/`:
 
-For remote access via Tailscale, use the network configuration template in `.claude/mcp-network.json`:
+| Agent | Domain | Key Topics |
+|-------|--------|------------|
+| `router` | Triage | Query classification, routing |
+| `triage` | Triage | Initial query analysis |
+| `firmware` | Core Development | General firmware questions |
+| `firmware-core` | Core Development | HAL/LL, timers, DMA, interrupts |
+| `debug` | Debugging | HardFault analysis, SWD, trace |
+| `bootloader` | Updates | Bootloader development |
+| `bootloader-programming` | Updates | IAP, DFU, system bootloader |
+| `peripheral-comm` | Communication | UART, SPI, I2C, CAN, USB |
+| `peripheral-analog` | Analog | ADC, DAC, OPAMP, comparators |
+| `peripheral-graphics` | Display | LTDC, DMA2D, TouchGFX |
+| `power` | Power | General power optimization |
+| `power-management` | Power | Sleep, Stop, Standby modes |
+| `safety` | Certification | Safety-critical development |
+| `safety-certification` | Certification | IEC 61508, ISO 26262 |
+| `security` | Security | Secure boot, TrustZone, crypto |
+| `hardware-design` | PCB/Hardware | EMC, thermal, oscillators |
 
-```json
-{
-  "mcpServers": {
-    "stm32-docs": {
-      "type": "sse",
-      "url": "http://YOUR_TAILSCALE_IP:8765/sse",
-      "description": "STM32 documentation server (network mode)"
-    }
-  }
-}
-```
+## Available MCP Tools (15+)
 
-To set up network mode:
-1. Start the server with `STM32_SERVER_MODE=network python -m mcp_server`
-2. Register on client machines: `claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"`
-3. Replace `YOUR_TAILSCALE_IP` with your actual Tailscale IP address
+When connected, Claude Code has access to these tools:
 
-## Available Slash Commands
+| Tool | Purpose | Example Usage |
+|------|---------|---------------|
+| `search_stm32_docs` | General semantic search | Search for "DMA configuration" |
+| `get_peripheral_docs` | Peripheral documentation | Get docs for "UART" |
+| `get_code_examples` | Find code examples | Examples for "SPI DMA" |
+| `get_register_info` | Register documentation | Info for "GPIOx_MODER" |
+| `lookup_hal_function` | HAL function lookup | Lookup "HAL_UART_Transmit" |
+| `troubleshoot_error` | Error troubleshooting | Debug "HAL_TIMEOUT" |
+| `get_init_sequence` | Initialization code | Init for "I2C" |
+| `get_clock_config` | Clock configuration | Clock for "HSE PLL" |
+| `compare_peripheral_options` | Compare peripherals | Compare "SPI" vs "I2C" |
+| `get_migration_guide` | Migration guidance | Migrate "F4 to H7" |
+| `get_interrupt_code` | Interrupt examples | Interrupt for "UART" |
+| `get_dma_code` | DMA examples | DMA for "SPI TX" |
+| `get_low_power_code` | Low power modes | Enter "Stop mode" |
+| `get_callback_code` | HAL callbacks | Callback for "UART TxCplt" |
+| `get_init_template` | Init templates | Template for "SPI master" |
+| `list_peripherals` | List peripherals | Show all peripherals |
+
+## MCP Resources
+
+| Resource URI | Description |
+|--------------|-------------|
+| `stm32://status` | Server status and database statistics |
+| `stm32://health` | Health check |
+| `stm32://peripherals` | List documented peripherals |
+| `stm32://peripherals/{name}` | Peripheral overview |
+| `stm32://stats` | Database statistics |
+| `stm32://sources` | Documentation source files |
+
+## Slash Commands
 
 ### `/stm32` - General Documentation Search
-
-Search STM32 documentation for any topic.
 
 ```
 /stm32 How to configure UART with DMA
@@ -80,8 +144,6 @@ Search STM32 documentation for any topic.
 ```
 
 ### `/stm32-init` - Peripheral Initialization
-
-Get complete initialization code for a peripheral.
 
 ```
 /stm32-init UART
@@ -92,8 +154,6 @@ Get complete initialization code for a peripheral.
 
 ### `/stm32-debug` - Debug Assistance
 
-Get help troubleshooting peripheral issues.
-
 ```
 /stm32-debug UART not receiving data
 /stm32-debug I2C HAL_TIMEOUT error
@@ -102,159 +162,110 @@ Get help troubleshooting peripheral issues.
 
 ### `/stm32-hal` - HAL Function Lookup
 
-Look up HAL/LL function documentation.
-
 ```
 /stm32-hal HAL_UART_Transmit
 /stm32-hal HAL_SPI_TransmitReceive_DMA
 /stm32-hal HAL_GPIO_Init
 ```
 
-## Using MCP Tools Directly
+## How Agents Work with MCP Tools
 
-When the MCP server is connected, Claude Code has access to these tools:
+Agents are specialized personas that automatically use MCP tools to answer questions:
 
-| Tool | Purpose | Example Usage |
-|------|---------|---------------|
-| `mcp__stm32-docs__search_stm32_docs` | General semantic search | Search for "DMA configuration" |
-| `mcp__stm32-docs__get_peripheral_docs` | Peripheral documentation | Get docs for "UART" |
-| `mcp__stm32-docs__get_code_examples` | Find code examples | Examples for "SPI DMA" |
-| `mcp__stm32-docs__lookup_hal_function` | HAL function lookup | Lookup "HAL_UART_Transmit" |
-| `mcp__stm32-docs__troubleshoot_error` | Error troubleshooting | Debug "HAL_TIMEOUT" |
-| `mcp__stm32-docs__get_init_sequence` | Initialization code | Init sequence for "I2C" |
-| `mcp__stm32-docs__get_clock_config` | Clock configuration | Clock config for "HSE PLL" |
-| `mcp__stm32-docs__list_peripherals` | List available peripherals | List all peripherals |
-| `mcp__stm32-docs__get_migration_guide` | Migration guidance | Migrate "F4 to H7" |
+1. **User asks question** - "How do I configure UART with DMA?"
+2. **Agent selected** - `peripheral-comm` agent activated
+3. **MCP tools called** - Agent calls `search_stm32_docs`, `get_dma_code`
+4. **Documentation retrieved** - Relevant chunks from vector database
+5. **Answer generated** - Agent synthesizes response with code examples
 
-## MCP Resources
+Example flow:
+```
+User: "Show me how to configure GPIO interrupts"
 
-The server also provides resources that can be read:
+Agent (firmware-core):
+  -> Calls: search_stm32_docs("GPIO interrupt configuration")
+  -> Calls: get_code_examples("GPIO interrupt", peripheral="GPIO")
+  -> Returns: Documentation + code examples
+```
 
-| Resource URI | Description |
-|--------------|-------------|
-| `stm32://peripherals/{name}` | Peripheral documentation |
-| `stm32://stats` | Server statistics |
-| `stm32://sources` | Available documentation sources |
+## Network Mode (Tailscale)
 
-## Tailscale Network Mode Setup
+For accessing from multiple machines via Tailscale:
 
-For accessing the MCP server from remote machines via Tailscale:
-
-### 1. Start the Server in Network Mode
+### Start Server in Network Mode
 
 ```bash
-# Set environment variables
 export STM32_SERVER_MODE=network
 export STM32_HOST=0.0.0.0
 export STM32_PORT=8765
-
-# Start the server
-python scripts/start_server.py --network
+python -m mcp_server
 ```
 
-### 2. Configure Tailscale
+### Configure Client Machines
 
-Ensure Tailscale is running on both the server machine and client machine:
+On client machines, register with SSE transport:
 
 ```bash
-# Check Tailscale status
-tailscale status
-
-# Get your Tailscale IP
-tailscale ip -4
+claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
 ```
 
-### 3. Update Client Configuration
-
-On the client machine, update `.claude/mcp.json`:
+Or manually add to `~/.claude.json`:
 
 ```json
 {
   "mcpServers": {
     "stm32-docs": {
       "type": "sse",
-      "url": "http://100.x.x.x:8765/sse",
-      "description": "STM32 documentation server (network mode)"
+      "url": "http://100.x.x.x:8765/sse"
     }
   }
 }
 ```
 
-Replace `100.x.x.x` with the actual Tailscale IP of the server machine.
+Replace `100.x.x.x` with your Tailscale IP.
 
-### 4. Verify Connection
+### Verify Connection
 
 ```bash
-# Test the connection
-curl http://100.x.x.x:8765/health
+curl http://YOUR_TAILSCALE_IP:8765/health
 ```
 
 ## Troubleshooting
 
 ### Server Not Starting
 
-1. Check Python environment:
-   ```bash
-   python --version  # Should be 3.10+
-   pip list | grep mcp
-   ```
-
-2. Verify dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Check server logs:
-   ```bash
-   STM32_LOG_LEVEL=DEBUG python mcp_server/server.py
-   ```
+1. Check uv is installed: `uv --version`
+2. Verify registration: `claude mcp list`
+3. Check server status: `claude mcp status stm32-docs`
 
 ### Tools Not Appearing in Claude Code
 
 1. Restart Claude Code after adding the MCP server
-2. Verify the server is registered: `claude mcp list`
-3. Check the module is importable: `python -m mcp_server --help`
+2. Verify registration: `claude mcp list`
+3. Test manually: `uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs --help`
 
 ### No Search Results
 
-1. Ensure documentation has been indexed:
-   ```bash
-   python scripts/ingest_docs.py --clear
-   ```
+The database builds on first run. Wait 5-10 minutes for auto-ingestion, or manually trigger:
 
-2. Verify ChromaDB has data:
-   ```bash
-   python scripts/verify_mcp.py
-   ```
+```bash
+python scripts/ingest_docs.py --clear
+```
+
+### Slow First Query
+
+First query triggers:
+1. Embedding model loading
+2. Database connection
+3. (If not done) Documentation ingestion
+
+Subsequent queries are fast (<100ms).
 
 ### Network Mode Connection Issues
 
-1. Check Tailscale is connected on both machines
+1. Check Tailscale is connected: `tailscale status`
 2. Verify firewall allows port 8765
-3. Test direct connection:
-   ```bash
-   curl http://YOUR_TAILSCALE_IP:8765/health
-   ```
-
-### Slow Responses
-
-1. First query may be slow due to model loading
-2. Subsequent queries should be faster (embeddings cached)
-3. Consider reducing `max_results` in queries
-
-## Verification Script
-
-Run the verification script to check your setup:
-
-```bash
-python scripts/verify_mcp.py
-```
-
-This checks:
-- Configuration files exist and are valid
-- Server can be imported
-- ChromaDB has indexed data
-- Slash commands are present
+3. Test direct connection: `curl http://YOUR_TAILSCALE_IP:8765/health`
 
 ## Environment Variables
 
@@ -264,19 +275,34 @@ This checks:
 | `STM32_HOST` | `127.0.0.1` | Host to bind (network mode) |
 | `STM32_PORT` | `8765` | Port to bind (network mode) |
 | `STM32_LOG_LEVEL` | `INFO` | Logging level |
-| `CHROMA_DB_PATH` | `./chroma_db` | ChromaDB storage path |
+| `STM32_CHROMA_DB_PATH` | (auto) | ChromaDB storage path |
 
 ## Best Practices
 
-1. **Always search first**: Use `/stm32` or `search_stm32_docs` before answering STM32 questions
-2. **Be specific**: More specific queries yield better results
-3. **Use peripheral tools**: For peripheral-specific questions, use `get_peripheral_docs`
-4. **Check examples**: Use `get_code_examples` for implementation guidance
-5. **Troubleshoot systematically**: Use `troubleshoot_error` for debugging help
+1. **Use MCP tools first** - Always search documentation before answering STM32 questions
+2. **Be specific** - More specific queries yield better results
+3. **Use peripheral filters** - Filter by peripheral for targeted results
+4. **Check examples** - Use `get_code_examples` for implementation guidance
+5. **Troubleshoot systematically** - Use `troubleshoot_error` for debugging help
+
+## Verification
+
+Check your installation:
+
+```bash
+# List registered MCP servers
+claude mcp list
+
+# Check server status
+claude mcp status stm32-docs
+
+# Test the server directly (if development install)
+python scripts/verify_mcp.py
+```
 
 ## Related Documentation
 
-- [MCP Server Documentation](MCP_SERVER.md)
-- [Quick Start Guide](QUICK_START.md)
-- [Agent Routing Specification](AGENT_ROUTING_SPECIFICATION.md)
-- [Infrastructure Overview](INFRASTRUCTURE.md)
+- [Getting Started](GETTING_STARTED.md) - Setup guide
+- [MCP Server](MCP_SERVER.md) - Server documentation
+- [Agent Quick Reference](AGENT_QUICK_REFERENCE.md) - Agent capabilities
+- [Advanced Tools](ADVANCED_TOOLS.md) - Tool reference

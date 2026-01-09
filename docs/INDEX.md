@@ -5,8 +5,19 @@ Complete index of all documentation for the STM32 MCP Documentation Server.
 ## Quick Links
 
 - [README](../README.md) - Project overview and quick start
+- [CLAUDE.md](../CLAUDE.md) - Claude Code project instructions
 - [Getting Started](GETTING_STARTED.md) - Complete setup guide
 - [Architecture](ARCHITECTURE.md) - System design and data flow
+
+## Installation
+
+The recommended installation method is via `uvx`:
+
+```bash
+claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+See [Getting Started](GETTING_STARTED.md) for detailed instructions.
 
 ## User Guides
 
@@ -15,6 +26,7 @@ Complete index of all documentation for the STM32 MCP Documentation Server.
 | Document | Description | Level |
 |----------|-------------|-------|
 | [README](../README.md) | Project overview, features, and quick start | Beginner |
+| [CLAUDE.md](../CLAUDE.md) | Instructions for Claude Code | Beginner |
 | [Getting Started](GETTING_STARTED.md) | Step-by-step installation and first use | Beginner |
 | [Quick Start](QUICK_START.md) | Essential commands and quick reference | Beginner |
 | [Claude Code Integration](CLAUDE_CODE_INTEGRATION.md) | Using with Claude Code CLI | Intermediate |
@@ -84,12 +96,13 @@ Start here if you want to use the system:
 
 Start here if you want to understand or modify the system:
 
-1. [Architecture](ARCHITECTURE.md) - System design
-2. [Infrastructure](INFRASTRUCTURE.md) - Project structure
-3. [MCP Server](MCP_SERVER.md) - Server implementation
-4. [Storage](STORAGE.md) - Database layer
-5. [Chunking](CHUNKING.md) - Document processing
-6. [Testing](TESTING.md) - Test suite
+1. [CLAUDE.md](../CLAUDE.md) - Project instructions
+2. [Architecture](ARCHITECTURE.md) - System design
+3. [Infrastructure](INFRASTRUCTURE.md) - Project structure
+4. [MCP Server](MCP_SERVER.md) - Server implementation
+5. [Storage](STORAGE.md) - Database layer
+6. [Chunking](CHUNKING.md) - Document processing
+7. [Testing](TESTING.md) - Test suite
 
 ### For System Architects
 
@@ -101,186 +114,79 @@ Start here if you want to design with or integrate the system:
 4. [Advanced Tools](ADVANCED_TOOLS.md) - Tool capabilities
 5. [Resources](RESOURCES.md) - Resource API
 
-## Documentation by Topic
+## Key Features Summary
 
-### Installation & Setup
+### Auto-Install on First Run
 
-- [README - Quick Start](../README.md#quick-start)
-- [Getting Started](GETTING_STARTED.md)
-- [Infrastructure - Setup](INFRASTRUCTURE.md)
+- **16 STM32 agents** installed to `~/.claude/agents/`
+- **Vector database** (13,815 chunks) built from 80 bundled docs
+- **Marker files** prevent re-installation
 
-### Configuration
+### MCP Tools (15+)
 
-- [Getting Started - Configuration](GETTING_STARTED.md#configuration-reference)
-- [Infrastructure - Configuration](INFRASTRUCTURE.md)
-- [MCP Server - Configuration](MCP_SERVER.md#configuration)
+| Tool | Description |
+|------|-------------|
+| `search_stm32_docs` | Semantic search |
+| `get_peripheral_docs` | Peripheral documentation |
+| `get_code_examples` | Code examples |
+| `get_register_info` | Register details |
+| `lookup_hal_function` | HAL function docs |
+| `troubleshoot_error` | Error troubleshooting |
+| `get_init_sequence` | Initialization code |
+| `get_clock_config` | Clock configuration |
+| `compare_peripheral_options` | Compare peripherals |
+| `get_migration_guide` | Migration guides |
+| `get_interrupt_code` | Interrupt examples |
+| `get_dma_code` | DMA examples |
+| `get_low_power_code` | Low power modes |
+| `get_callback_code` | HAL callbacks |
+| `get_init_template` | Init templates |
+| `list_peripherals` | List peripherals |
 
-### Usage
+### Agents (16)
 
-- [Quick Start](QUICK_START.md)
-- [Claude Code Integration](CLAUDE_CODE_INTEGRATION.md)
-- [Agent Quick Reference](AGENT_QUICK_REFERENCE.md)
-
-### Search & Retrieval
-
-- [Advanced Tools](ADVANCED_TOOLS.md)
-- [Resources](RESOURCES.md)
-- [Storage - API Reference](STORAGE.md)
-
-### Data Management
-
-- [Ingestion](INGESTION.md)
-- [Chunking](CHUNKING.md)
-- [Storage](STORAGE.md)
-
-### Development
-
-- [Testing](TESTING.md)
-- [Architecture Best Practices](ARCHITECTURE_BEST_PRACTICES.md)
-- [Execution Specifications](EXECUTION_SPECIFICATIONS.md)
-
-### Agents
-
-- [Agent Quick Reference](AGENT_QUICK_REFERENCE.md)
-- [Agent MCP Integration](AGENT_MCP_INTEGRATION.md)
-- [Agent Routing Specification](AGENT_ROUTING_SPECIFICATION.md)
-- [Agents MCP Guide](../.claude/agents/AGENTS_MCP_GUIDE.md)
-
-### Troubleshooting
-
-- [Getting Started - Troubleshooting](GETTING_STARTED.md#troubleshooting)
-- [README - Troubleshooting](../README.md#troubleshooting)
-- [Testing - Validation](TESTING.md)
-
-## Component-Specific Documentation
-
-### mcp_server/
-
-| File | Documentation |
-|------|---------------|
-| server.py | [MCP Server](MCP_SERVER.md) |
-| config.py | [Infrastructure - Configuration](INFRASTRUCTURE.md) |
-| tools/ | [Advanced Tools](ADVANCED_TOOLS.md) |
-| resources/ | [Resources](RESOURCES.md) |
-
-### pipeline/
-
-| File | Documentation |
-|------|---------------|
-| chunker.py | [Chunking](CHUNKING.md) |
-| validator.py | [Chunking - Validation](CHUNKING.md#validation) |
-| README.md | [Pipeline README](../pipeline/README.md) |
-
-### storage/
-
-| File | Documentation |
-|------|---------------|
-| chroma_store.py | [Storage](STORAGE.md) |
-| metadata.py | [Storage - Metadata Schema](STORAGE.md#metadata-schema) |
-| README.md | [Storage README](../storage/README.md) |
-| SCHEMA_REFERENCE.md | [Storage Schema Reference](../storage/SCHEMA_REFERENCE.md) |
-
-### scripts/
-
-| File | Documentation |
-|------|---------------|
-| ingest_docs.py | [Ingestion](INGESTION.md) |
-| test_retrieval.py | [Testing - Search Tests](TESTING.md) |
-| verify_mcp.py | [Testing - System Validation](TESTING.md) |
-| start_server.py | [MCP Server - Starting](MCP_SERVER.md) |
-| README.md | [Scripts README](../scripts/README.md) |
-
-### tests/
-
-| Directory | Documentation |
-|-----------|---------------|
-| tests/ | [Testing](TESTING.md) |
-
-### .claude/
-
-| File/Directory | Documentation |
-|----------------|---------------|
-| mcp.json | [Claude Code Integration](CLAUDE_CODE_INTEGRATION.md) |
-| agents/ | [Agent MCP Integration](AGENT_MCP_INTEGRATION.md) |
-| commands/ | [Quick Start - Slash Commands](QUICK_START.md) |
-
-## Documentation by File Type
-
-### Primary Guides (Start Here)
-
-- [README](../README.md)
-- [Getting Started](GETTING_STARTED.md)
-- [Architecture](ARCHITECTURE.md)
-
-### Quick References
-
-- [Quick Start](QUICK_START.md)
-- [Agent Quick Reference](AGENT_QUICK_REFERENCE.md)
-
-### Component Documentation
-
-- [MCP Server](MCP_SERVER.md)
-- [Advanced Tools](ADVANCED_TOOLS.md)
-- [Resources](RESOURCES.md)
-- [Storage](STORAGE.md)
-- [Chunking](CHUNKING.md)
-
-### Integration Guides
-
-- [Claude Code Integration](CLAUDE_CODE_INTEGRATION.md)
-- [Agent MCP Integration](AGENT_MCP_INTEGRATION.md)
-
-### Process Documentation
-
-- [Ingestion](INGESTION.md)
-- [Testing](TESTING.md)
-
-### Technical Specifications
-
-- [Architecture Best Practices](ARCHITECTURE_BEST_PRACTICES.md)
-- [Execution Specifications](EXECUTION_SPECIFICATIONS.md)
-- [Agent Routing Specification](AGENT_ROUTING_SPECIFICATION.md)
-- [STM32 Document Chunking Strategy](STM32_DOCUMENT_CHUNKING_STRATEGY.md)
-
-### Component READMEs
-
-- [Pipeline README](../pipeline/README.md)
-- [Storage README](../storage/README.md)
-- [Scripts README](../scripts/README.md)
+| Category | Agents |
+|----------|--------|
+| Routing | router, triage |
+| Firmware | firmware, firmware-core |
+| Debugging | debug |
+| Bootloader | bootloader, bootloader-programming |
+| Peripherals | peripheral-comm, peripheral-analog, peripheral-graphics |
+| Power | power, power-management |
+| Safety | safety, safety-certification |
+| Security | security |
+| Hardware | hardware-design |
 
 ## Common Tasks
 
 ### I want to...
 
-#### Get Started
-→ [README](../README.md) → [Getting Started](GETTING_STARTED.md)
+#### Install the System
+[README](../README.md) -> [Getting Started](GETTING_STARTED.md)
 
-#### Use the System
-→ [Quick Start](QUICK_START.md) → [Claude Code Integration](CLAUDE_CODE_INTEGRATION.md)
+#### Use with Claude Code
+[Claude Code Integration](CLAUDE_CODE_INTEGRATION.md)
 
 #### Search Documentation
-→ [Advanced Tools](ADVANCED_TOOLS.md) → [Resources](RESOURCES.md)
+[Advanced Tools](ADVANCED_TOOLS.md) -> [Resources](RESOURCES.md)
 
-#### Add Documentation
-→ [Ingestion](INGESTION.md) → [Chunking](CHUNKING.md)
+#### Understand the Agents
+[Agent Quick Reference](AGENT_QUICK_REFERENCE.md) -> [Agent MCP Integration](AGENT_MCP_INTEGRATION.md)
 
 #### Understand Architecture
-→ [Architecture](ARCHITECTURE.md) → [Infrastructure](INFRASTRUCTURE.md)
-
-#### Configure Agents
-→ [Agent Quick Reference](AGENT_QUICK_REFERENCE.md) → [Agent MCP Integration](AGENT_MCP_INTEGRATION.md)
+[Architecture](ARCHITECTURE.md) -> [Infrastructure](INFRASTRUCTURE.md)
 
 #### Run Tests
-→ [Testing](TESTING.md)
+[Testing](TESTING.md)
 
 #### Troubleshoot Issues
-→ [Getting Started - Troubleshooting](GETTING_STARTED.md#troubleshooting) → [Testing](TESTING.md)
+[Getting Started - Troubleshooting](GETTING_STARTED.md#troubleshooting)
 
 #### Deploy on Network
-→ [Getting Started - Network Mode](GETTING_STARTED.md#network-mode-optional) → [MCP Server](MCP_SERVER.md)
+[Claude Code Integration - Network Mode](CLAUDE_CODE_INTEGRATION.md#network-mode-tailscale)
 
 #### Develop New Features
-→ [Architecture](ARCHITECTURE.md) → [Architecture Best Practices](ARCHITECTURE_BEST_PRACTICES.md) → [Execution Specifications](EXECUTION_SPECIFICATIONS.md)
+[CLAUDE.md](../CLAUDE.md) -> [Architecture](ARCHITECTURE.md) -> [Testing](TESTING.md)
 
 ## External Resources
 
@@ -300,65 +206,27 @@ Start here if you want to design with or integrate the system:
 
 ### Coverage
 
-- **Total Documents**: 23 documentation files
-- **Total Pages**: ~200 pages (estimated)
-- **Total Words**: ~50,000 words (estimated)
-
-### Categories
-
-- User Guides: 4
-- Architecture: 4
-- Components: 5
-- Development: 2
-- Agents: 4
-- Technical Specs: 4
-
-## Contributing to Documentation
-
-When adding or updating documentation:
-
-1. **Follow the structure** - Use existing documents as templates
-2. **Cross-reference** - Link to related documents
-3. **Update INDEX.md** - Add new documents to this index
-4. **Be consistent** - Follow naming conventions (UPPERCASE.md for docs)
-5. **Include examples** - Show code snippets and commands
-6. **Test commands** - Verify all commands work
-7. **Update README** - If adding major documentation, update main README
-
-## Documentation Maintenance
+- **Total Documents**: 24+ documentation files
+- **Categories**: User Guides, Architecture, Components, Development, Agents
 
 ### Last Updated
-- README: 2026-01-08
-- Getting Started: 2026-01-08
-- Architecture: 2026-01-08
-- Index: 2026-01-08
-
-### Needs Review
-All documentation is current as of January 2026.
+- All documentation: January 2026
 
 ## Version History
 
-### v0.1.0 (2026-01-08)
-- Initial comprehensive documentation set
-- Complete architecture documentation
-- User guides and quick start
-- Component documentation
-- Testing and development guides
+### v1.0.0 (January 2026)
+- uvx installation support
+- Auto-installation of agents and vector database
+- 16 specialized agents
+- 15+ MCP tools
+- Full documentation set
 
 ## Getting Help
 
 If you can't find what you're looking for:
 
 1. Check the [README](../README.md) for overview
-2. Try [Getting Started](GETTING_STARTED.md) for setup help
-3. Review [Troubleshooting sections](GETTING_STARTED.md#troubleshooting)
-4. Read [Architecture](ARCHITECTURE.md) for system understanding
-5. Check [Testing](TESTING.md) for validation procedures
-
-## Documentation Feedback
-
-To improve documentation:
-- Note unclear sections
-- Suggest missing topics
-- Report errors or outdated information
-- Propose new examples or use cases
+2. Read [CLAUDE.md](../CLAUDE.md) for Claude Code instructions
+3. Try [Getting Started](GETTING_STARTED.md) for setup help
+4. Review [Troubleshooting sections](GETTING_STARTED.md#troubleshooting)
+5. Read [Architecture](ARCHITECTURE.md) for system understanding
