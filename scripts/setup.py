@@ -609,7 +609,11 @@ def show_status():
 
 
 def uninstall():
-    """Remove STM32 MCP configurations."""
+    """Remove STM32 MCP configurations.
+
+    Note: For complete uninstall including ChromaDB database,
+    use the dedicated `stm32-uninstall` command instead.
+    """
     print_header("STM32 MCP Server - Uninstall")
 
     claude_dir = get_claude_config_dir()
@@ -633,11 +637,11 @@ def uninstall():
     # Remove agents
     agents_dir = claude_dir / 'agents'
     stm32_agents = [
-        'router.md', 'firmware.md', 'firmware-core.md', 'power.md',
-        'power-management.md', 'debug.md', 'safety.md', 'safety-certification.md',
-        'bootloader.md', 'bootloader-programming.md', 'security.md',
-        'hardware-design.md', 'peripheral-comm.md', 'peripheral-analog.md',
-        'peripheral-graphics.md', 'triage.md'
+        'router.md', 'triage.md', 'firmware.md', 'firmware-core.md',
+        'debug.md', 'bootloader.md', 'bootloader-programming.md',
+        'peripheral-comm.md', 'peripheral-analog.md', 'peripheral-graphics.md',
+        'power.md', 'power-management.md', 'safety.md', 'safety-certification.md',
+        'security.md', 'hardware-design.md'
     ]
     for agent in stm32_agents:
         agent_path = agents_dir / agent
@@ -654,10 +658,28 @@ def uninstall():
             cmd_path.unlink()
             print_success(f"Removed command: {cmd}")
 
+    # Remove marker file
+    marker = claude_dir / '.stm32-agents-installed'
+    if marker.exists():
+        marker.unlink()
+        print_success("Removed installation marker file")
+
+    # Try to remove ChromaDB database
+    chroma_db_path = PROJECT_ROOT / 'data' / 'chroma_db'
+    if chroma_db_path.exists():
+        try:
+            shutil.rmtree(chroma_db_path)
+            print_success("Removed ChromaDB database")
+        except Exception as e:
+            print_warning(f"Could not remove ChromaDB database: {e}")
+
     print_info("\nNote: This does not remove:")
     print_info("  - The installed Python package (use: pip uninstall stm32-mcp-docs)")
-    print_info("  - The ChromaDB database (in data/chroma_db/)")
     print_info("  - The project directory")
+    print_info("")
+    print_info("For complete uninstall including uvx cache cleanup:")
+    print_info("  1. claude mcp remove stm32-docs -s user")
+    print_info("  2. stm32-uninstall")
 
 
 def main():

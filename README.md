@@ -63,6 +63,7 @@ Or ask naturally:
 - [Configuration](#configuration)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
+- [Uninstall](#uninstall)
 - [License](#license)
 
 ## Installation
@@ -327,6 +328,40 @@ claude mcp status stm32-docs
 ```
 
 For more troubleshooting help, see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#troubleshooting).
+
+## Uninstall
+
+To completely remove the STM32 MCP server and all its components:
+
+```bash
+# Step 1: Remove MCP server configuration
+claude mcp remove stm32-docs -s user
+
+# Step 2: Clean up agents, commands, and database
+stm32-uninstall
+```
+
+The `stm32-uninstall` command removes:
+- 16 STM32 agents from `~/.claude/agents/`
+- 4 slash commands from `~/.claude/commands/`
+- Marker file `~/.claude/.stm32-agents-installed`
+- ChromaDB vector database
+
+### Uninstall Options
+
+```bash
+stm32-uninstall --dry-run   # Preview what will be removed
+stm32-uninstall --yes       # Skip confirmation prompt
+stm32-uninstall --keep-db   # Keep database, only remove agents/commands
+```
+
+### Why Manual Cleanup is Required
+
+The MCP protocol does not support uninstall hooks. When you run `claude mcp remove`, only the MCP configuration is removed. Installed agents, commands, and databases are NOT automatically cleaned up.
+
+This is a known limitation documented in:
+- [anthropics/claude-code#11240](https://github.com/anthropics/claude-code/issues/11240) - Plugin Lifecycle Hooks
+- [anthropics/claude-code#9394](https://github.com/anthropics/claude-code/issues/9394) - postInstall/postUninstall hooks
 
 ## License
 

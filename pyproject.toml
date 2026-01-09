@@ -128,6 +128,9 @@ stm32-test-retrieval = "scripts.test_retrieval:main"
 # Search interface
 stm32-search = "scripts.search:main"
 
+# Uninstall (cleanup agents, commands, marker, database)
+stm32-uninstall = "scripts.uninstall:main"
+
 [project.urls]
 Homepage = "https://github.com/creativec09/stm32-agents"
 Documentation = "https://github.com/creativec09/stm32-agents#readme"
