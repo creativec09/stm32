@@ -9,7 +9,7 @@
   "repository": "https://github.com/creativec09/stm32",
   "license": "MIT",
   "keywords": ["stm32", "embedded", "microcontroller", "arm", "hal", "firmware"],
-  "agents": "./agents/",
-  "commands": "./commands/",
+  "agents": "./agents",
+  "commands": "./commands",
   "mcpServers": "./mcp-config.json"
 }
