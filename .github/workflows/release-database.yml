@@ -1,0 +1,432 @@
+# GitHub Actions workflow for building and releasing the STM32 ChromaDB database
+# This workflow:
+# 1. Builds the ChromaDB vector database from markdown documentation
+# 2. Validates the chunk count meets expectations
+# 3. Creates release assets (database archive + manifest)
+# 4. Attaches assets to GitHub releases
+
+name: Build and Release Database
+
+on:
+  # Trigger on version tags
+  push:
+    tags:
+      - 'v*'
+
+  # Allow manual trigger with optional version input
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.2.0). Leave empty to use latest tag or generate from date.'
+        required: false
+        type: string
+      attach_to_release:
+        description: 'Attach to existing release instead of creating new one'
+        required: false
+        type: boolean
+        default: false
+      force_rebuild:
+        description: 'Force rebuild even if assets already exist'
+        required: false
+        type: boolean
+        default: false
+
+  # Trigger on release creation
+  release:
+    types: [created]
+
+# Cancel in-progress runs for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  # Expected chunk count range (fail if outside this range)
+  MIN_EXPECTED_CHUNKS: 12000
+  MAX_EXPECTED_CHUNKS: 16000
+  # Asset names
+  DB_ARCHIVE_NAME: chromadb-stm32-docs.tar.gz
+  DB_MANIFEST_NAME: chromadb-manifest.json
+
+jobs:
+  build-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      chunk_count: ${{ steps.build.outputs.chunk_count }}
+      source_files: ${{ steps.build.outputs.source_files }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for tag operations
+
+      - name: Determine version
+        id: version
+        run: |
+          # Priority: manual input > tag from push > latest tag > date-based
+          if [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+          elif [[ -n "${{ github.event.release.tag_name }}" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            # Try to get latest tag
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [[ -n "$LATEST_TAG" ]]; then
+              VERSION="$LATEST_TAG"
+            else
+              # Generate version from date
+              VERSION="v$(date +'%Y.%m.%d')"
+            fi
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Determined version: $VERSION"
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install package and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install the package with all dependencies
+          pip install -e ".[dev]"
+
+          # Verify installation
+          python -c "import mcp_server; print('MCP Server package installed')"
+          python -c "import chromadb; print(f'ChromaDB version: {chromadb.__version__}')"
+          python -c "from sentence_transformers import SentenceTransformer; print('SentenceTransformers installed')"
+
+      - name: Verify markdown source files
+        run: |
+          # Check that markdown files exist
+          MD_DIR="mcp_server/markdowns"
+          if [[ ! -d "$MD_DIR" ]]; then
+            echo "::error::Markdown directory not found: $MD_DIR"
+            exit 1
+          fi
+
+          MD_COUNT=$(find "$MD_DIR" -name "*.md" -type f | wc -l)
+          echo "Found $MD_COUNT markdown files in $MD_DIR"
+
+          if [[ $MD_COUNT -lt 50 ]]; then
+            echo "::error::Expected at least 50 markdown files, found $MD_COUNT"
+            exit 1
+          fi
+
+          echo "source_files=$MD_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Build ChromaDB database
+        id: build
+        run: |
+          echo "Building ChromaDB database from markdown documentation..."
+
+          # Run the build script
+          python scripts/build_release_database.py \
+            --output-dir ./release-artifacts \
+            --version "${{ steps.version.outputs.version }}" \
+            --validate
+
+          # Check the result
+          if [[ ! -f "./release-artifacts/build-info.json" ]]; then
+            echo "::error::Build info not generated - build may have failed"
+            exit 1
+          fi
+
+          # Extract chunk count from build info
+          CHUNK_COUNT=$(python -c "import json; print(json.load(open('./release-artifacts/build-info.json'))['chunks'])")
+          SOURCE_FILES=$(python -c "import json; print(json.load(open('./release-artifacts/build-info.json'))['source_files'])")
+
+          echo "chunk_count=$CHUNK_COUNT" >> $GITHUB_OUTPUT
+          echo "source_files=$SOURCE_FILES" >> $GITHUB_OUTPUT
+
+          echo "Build completed: $CHUNK_COUNT chunks from $SOURCE_FILES files"
+
+      - name: Validate chunk count
+        run: |
+          CHUNK_COUNT="${{ steps.build.outputs.chunk_count }}"
+
+          echo "Validating chunk count: $CHUNK_COUNT"
+          echo "Expected range: ${{ env.MIN_EXPECTED_CHUNKS }} - ${{ env.MAX_EXPECTED_CHUNKS }}"
+
+          if [[ $CHUNK_COUNT -lt ${{ env.MIN_EXPECTED_CHUNKS }} ]]; then
+            echo "::error::Chunk count ($CHUNK_COUNT) is below minimum expected (${{ env.MIN_EXPECTED_CHUNKS }})"
+            echo "This may indicate a problem with the ingestion process."
+            exit 1
+          fi
+
+          if [[ $CHUNK_COUNT -gt ${{ env.MAX_EXPECTED_CHUNKS }} ]]; then
+            echo "::warning::Chunk count ($CHUNK_COUNT) is above maximum expected (${{ env.MAX_EXPECTED_CHUNKS }})"
+            echo "This may be fine if new documentation was added, but please verify."
+          fi
+
+          echo "Chunk count validation passed"
+
+      - name: Package database archive
+        id: package
+        run: |
+          echo "Creating database archive..."
+
+          # The build script should have created these
+          if [[ ! -f "./release-artifacts/${{ env.DB_ARCHIVE_NAME }}" ]]; then
+            echo "::error::Database archive not found"
+            exit 1
+          fi
+
+          if [[ ! -f "./release-artifacts/${{ env.DB_MANIFEST_NAME }}" ]]; then
+            echo "::error::Manifest file not found"
+            exit 1
+          fi
+
+          # Get SHA256 checksum
+          SHA256=$(sha256sum "./release-artifacts/${{ env.DB_ARCHIVE_NAME }}" | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+          # Verify manifest matches
+          MANIFEST_SHA256=$(python -c "import json; print(json.load(open('./release-artifacts/${{ env.DB_MANIFEST_NAME }}'))['sha256'])")
+          if [[ "$SHA256" != "$MANIFEST_SHA256" ]]; then
+            echo "::error::SHA256 mismatch between calculated and manifest"
+            exit 1
+          fi
+
+          echo "Archive SHA256: $SHA256"
+
+          # Show file sizes
+          echo "Archive size: $(du -h ./release-artifacts/${{ env.DB_ARCHIVE_NAME }} | cut -f1)"
+          echo "Manifest size: $(du -h ./release-artifacts/${{ env.DB_MANIFEST_NAME }} | cut -f1)"
+
+      - name: Verify archive structure
+        run: |
+          echo "Verifying archive structure..."
+
+          # List archive contents
+          tar -tzf "./release-artifacts/${{ env.DB_ARCHIVE_NAME }}" | head -20
+
+          # Verify chroma_db directory exists in archive
+          if ! tar -tzf "./release-artifacts/${{ env.DB_ARCHIVE_NAME }}" | grep -q "^chroma_db/"; then
+            echo "::error::Archive does not contain chroma_db directory at root"
+            exit 1
+          fi
+
+          # Verify chroma.sqlite3 exists
+          if ! tar -tzf "./release-artifacts/${{ env.DB_ARCHIVE_NAME }}" | grep -q "chroma.sqlite3"; then
+            echo "::error::Archive does not contain chroma.sqlite3"
+            exit 1
+          fi
+
+          echo "Archive structure verified"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-release-artifacts
+          path: |
+            ./release-artifacts/${{ env.DB_ARCHIVE_NAME }}
+            ./release-artifacts/${{ env.DB_MANIFEST_NAME }}
+            ./release-artifacts/build-info.json
+          retention-days: 30
+
+      - name: Generate build summary
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## Database Build Summary
+
+          | Metric | Value |
+          |--------|-------|
+          | Version | \`${{ steps.version.outputs.version }}\` |
+          | Chunks | ${{ steps.build.outputs.chunk_count }} |
+          | Source Files | ${{ steps.build.outputs.source_files }} |
+          | SHA256 | \`${{ steps.package.outputs.sha256 }}\` |
+          | Archive Size | $(du -h ./release-artifacts/${{ env.DB_ARCHIVE_NAME }} | cut -f1) |
+
+          ### Manifest Content
+          \`\`\`json
+          $(cat ./release-artifacts/${{ env.DB_MANIFEST_NAME }})
+          \`\`\`
+          EOF
+
+  create-release:
+    needs: build-database
+    runs-on: ubuntu-latest
+    # Only run on tag push or manual dispatch (not on release creation, as release already exists)
+    if: github.event_name != 'release'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: database-release-artifacts
+          path: ./artifacts
+
+      - name: Check for existing release
+        id: check_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.build-database.outputs.version }}"
+
+          # Check if release exists
+          if gh release view "$VERSION" --repo ${{ github.repository }} &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release $VERSION already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release $VERSION does not exist"
+          fi
+
+      - name: Create new release
+        if: steps.check_release.outputs.exists != 'true' && github.event.inputs.attach_to_release != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.build-database.outputs.version }}"
+          CHUNKS="${{ needs.build-database.outputs.chunk_count }}"
+
+          # Create release notes
+          cat << EOF > release-notes.md
+          ## STM32 Documentation Database Release
+
+          This release includes the pre-built ChromaDB vector database for the STM32 MCP documentation server.
+
+          ### Database Statistics
+          - **Chunks:** $CHUNKS
+          - **Source Files:** ${{ needs.build-database.outputs.source_files }}
+          - **SHA256:** \`${{ needs.build-database.outputs.sha256 }}\`
+
+          ### Installation
+          The database will be automatically downloaded when you first run the MCP server:
+
+          \`\`\`bash
+          uvx --from git+https://github.com/${{ github.repository }}.git stm32-mcp-docs
+          \`\`\`
+
+          ### Manual Download
+          Download the \`chromadb-stm32-docs.tar.gz\` asset and extract to your data directory.
+
+          ### Verification
+          After downloading, verify the SHA256 checksum:
+          \`\`\`bash
+          sha256sum chromadb-stm32-docs.tar.gz
+          # Should match: ${{ needs.build-database.outputs.sha256 }}
+          \`\`\`
+          EOF
+
+          # Create release with assets
+          gh release create "$VERSION" \
+            --repo ${{ github.repository }} \
+            --title "STM32 Docs Database $VERSION" \
+            --notes-file release-notes.md \
+            "./artifacts/${{ env.DB_ARCHIVE_NAME }}" \
+            "./artifacts/${{ env.DB_MANIFEST_NAME }}"
+
+          echo "Created release $VERSION with database assets"
+
+      - name: Attach to existing release
+        if: steps.check_release.outputs.exists == 'true' || github.event.inputs.attach_to_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.build-database.outputs.version }}"
+
+          # Check if we should force rebuild
+          if [[ "${{ github.event.inputs.force_rebuild }}" != "true" ]]; then
+            # Check if assets already exist
+            if gh release view "$VERSION" --repo ${{ github.repository }} --json assets -q '.assets[].name' | grep -q "${{ env.DB_ARCHIVE_NAME }}"; then
+              echo "Database assets already exist in release $VERSION"
+              echo "Use force_rebuild=true to replace them"
+              exit 0
+            fi
+          fi
+
+          # Delete existing assets if they exist (for force rebuild)
+          gh release delete-asset "$VERSION" "${{ env.DB_ARCHIVE_NAME }}" --repo ${{ github.repository }} --yes 2>/dev/null || true
+          gh release delete-asset "$VERSION" "${{ env.DB_MANIFEST_NAME }}" --repo ${{ github.repository }} --yes 2>/dev/null || true
+
+          # Upload new assets
+          gh release upload "$VERSION" \
+            --repo ${{ github.repository }} \
+            --clobber \
+            "./artifacts/${{ env.DB_ARCHIVE_NAME }}" \
+            "./artifacts/${{ env.DB_MANIFEST_NAME }}"
+
+          echo "Attached database assets to release $VERSION"
+
+  attach-to-release:
+    needs: build-database
+    runs-on: ubuntu-latest
+    # Only run when triggered by release creation
+    if: github.event_name == 'release'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: database-release-artifacts
+          path: ./artifacts
+
+      - name: Attach assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+
+          echo "Attaching database assets to release $VERSION"
+
+          # Upload assets to the release
+          gh release upload "$VERSION" \
+            --repo ${{ github.repository }} \
+            --clobber \
+            "./artifacts/${{ env.DB_ARCHIVE_NAME }}" \
+            "./artifacts/${{ env.DB_MANIFEST_NAME }}"
+
+          echo "Successfully attached database assets"
+
+      - name: Update release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          CHUNKS="${{ needs.build-database.outputs.chunk_count }}"
+
+          # Get existing release body
+          EXISTING_BODY=$(gh release view "$VERSION" --repo ${{ github.repository }} --json body -q '.body')
+
+          # Append database info
+          cat << EOF > updated-notes.md
+          $EXISTING_BODY
+
+          ---
+
+          ## Database Assets (Auto-generated)
+
+          This release includes the pre-built ChromaDB vector database.
+
+          | Metric | Value |
+          |--------|-------|
+          | Chunks | $CHUNKS |
+          | Source Files | ${{ needs.build-database.outputs.source_files }} |
+          | SHA256 | \`${{ needs.build-database.outputs.sha256 }}\` |
+
+          The database will be automatically downloaded when you first run the MCP server.
+          EOF
+
+          # Update release
+          gh release edit "$VERSION" \
+            --repo ${{ github.repository }} \
+            --notes-file updated-notes.md
