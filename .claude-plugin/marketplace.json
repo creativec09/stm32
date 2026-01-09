@@ -1,0 +1,16 @@
+{
+  "name": "stm32-marketplace",
+  "description": "STM32 development tools for Claude Code",
+  "plugins": [
+    {
+      "name": "stm32",
+      "version": "1.1.0",
+      "description": "STM32 microcontroller development tools with semantic documentation search, specialized agents, and HAL reference",
+      "source": "..",
+      "author": {
+        "name": "creativec09"
+      },
+      "keywords": ["stm32", "embedded", "microcontroller", "arm", "hal", "firmware"]
+    }
+  ]
+}
