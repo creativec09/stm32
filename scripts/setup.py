@@ -182,18 +182,15 @@ def check_chromadb_populated() -> Tuple[bool, int]:
 
 
 def generate_mcp_config(python_path: Path, install_type: str) -> Dict[str, Any]:
-    """Generate MCP configuration JSON."""
-    server_script = PROJECT_ROOT / 'mcp_server' / 'server.py'
-
+    """Generate MCP configuration JSON for manual fallback."""
     return {
         "mcpServers": {
             "stm32-docs": {
                 "command": str(python_path),
-                "args": [str(server_script)],
+                "args": ["-m", "mcp_server"],
                 "env": {
                     "STM32_SERVER_MODE": "local",
-                    "STM32_LOG_LEVEL": "INFO",
-                    "PYTHONPATH": str(PROJECT_ROOT)
+                    "STM32_LOG_LEVEL": "INFO"
                 },
                 "description": "STM32 documentation search and retrieval via semantic search. Note: First startup takes ~90s due to ML model loading."
             }
@@ -201,16 +198,79 @@ def generate_mcp_config(python_path: Path, install_type: str) -> Dict[str, Any]:
     }
 
 
+def check_claude_cli_available() -> bool:
+    """Check if the Claude CLI is available."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["claude", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+
+
+def configure_mcp_via_cli(python_path: Path) -> bool:
+    """
+    Configure MCP server using the Claude CLI.
+
+    Uses: claude mcp add stm32-docs -s user -- python -m mcp_server
+
+    Returns:
+        True if successful, False otherwise
+    """
+    import subprocess
+
+    try:
+        # Build the command
+        cmd = [
+            "claude", "mcp", "add", "stm32-docs",
+            "-s", "user",
+            "-e", "STM32_SERVER_MODE=local",
+            "-e", "STM32_LOG_LEVEL=INFO",
+            "--",
+            str(python_path), "-m", "mcp_server"
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(PROJECT_ROOT)
+        )
+
+        if result.returncode == 0:
+            return True
+        else:
+            # Server might already exist, try to update it
+            if "already exists" in result.stderr.lower():
+                print_info("stm32-docs already configured, updating...")
+                # Remove and re-add
+                subprocess.run(
+                    ["claude", "mcp", "remove", "stm32-docs", "-s", "user"],
+                    capture_output=True,
+                    timeout=10
+                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+                return result.returncode == 0
+            return False
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+        logger_msg = f"Claude CLI error: {e}" if 'e' in dir() else "Claude CLI not available"
+        return False
+
+
 def configure_mcp(force: bool = False) -> bool:
     """
     Configure MCP server for Claude Code.
 
-    This updates the user's Claude Code MCP configuration.
+    This uses the Claude CLI `claude mcp add` command when available,
+    with a fallback to manual configuration if the CLI is not available.
     """
     print_step(1, "Configuring MCP server for Claude Code...")
-
-    claude_dir = get_claude_config_dir()
-    mcp_config_path = claude_dir / 'mcp.json'
 
     # Find Python executable
     python_path = get_project_venv_python()
@@ -218,11 +278,28 @@ def configure_mcp(force: bool = False) -> bool:
         print_warning("Virtual environment not found. Using system Python.")
         python_path = Path(sys.executable)
 
-    # Verify server script exists
-    server_script = PROJECT_ROOT / 'mcp_server' / 'server.py'
-    if not server_script.exists():
-        print_error(f"Server script not found: {server_script}")
+    # Verify server module exists
+    server_module = PROJECT_ROOT / 'mcp_server' / '__main__.py'
+    if not server_module.exists():
+        print_error(f"Server module not found: {server_module}")
         return False
+
+    # Try Claude CLI first (preferred method)
+    if check_claude_cli_available():
+        print_info("Using Claude CLI for MCP configuration...")
+        if configure_mcp_via_cli(python_path):
+            print_success("Configured stm32-docs via 'claude mcp add'")
+            print_info(f"Python: {python_path}")
+            print_info(f"Module: python -m mcp_server")
+            return True
+        else:
+            print_warning("Claude CLI configuration failed, falling back to manual config")
+
+    # Fallback: Manual configuration
+    print_info("Using manual MCP configuration (Claude CLI not available)...")
+
+    claude_dir = get_claude_config_dir()
+    mcp_config_path = claude_dir / 'mcp.json'
 
     install_type, _ = detect_installation_type()
     new_config = generate_mcp_config(python_path, install_type)
@@ -262,7 +339,7 @@ def configure_mcp(force: bool = False) -> bool:
 
     # Show configuration
     print_info(f"Python: {python_path}")
-    print_info(f"Server: {server_script}")
+    print_info(f"Module: python -m mcp_server")
     print_info(f"Project: {PROJECT_ROOT}")
 
     return True

@@ -13,33 +13,42 @@ The STM32 Multi-Agent Development System integrates with Claude Code through the
 - Troubleshoot common errors
 - Access clock configuration guides
 
-## Configuration Files
+## Configuration
 
-### Primary Configuration: `.claude/mcp.json`
+### Recommended: Using Claude CLI
 
-This file configures Claude Code to connect to the MCP server in local (stdio) mode:
+The recommended way to configure the MCP server is using the Claude CLI:
+
+```bash
+claude mcp add stm32-docs -s user -- python -m mcp_server
+```
+
+This registers the server at the user level, making it available across all projects.
+
+### Alternative: Project-Level Configuration (`.mcp.json`)
+
+The repository includes a `.mcp.json` file at the project root that Claude Code automatically detects:
 
 ```json
 {
   "mcpServers": {
     "stm32-docs": {
       "command": "python",
-      "args": [
-        "/mnt/c/Users/creat/Claude/stm32-agents/mcp_server/server.py"
-      ],
+      "args": ["-m", "mcp_server"],
       "env": {
         "STM32_SERVER_MODE": "local",
         "STM32_LOG_LEVEL": "INFO"
-      },
-      "description": "STM32 documentation search and retrieval via semantic search"
+      }
     }
   }
 }
 ```
 
-### Network Configuration: `.claude/mcp-network.json`
+This provides project-scoped access when working in the stm32-agents directory.
 
-For remote access via Tailscale, use the network configuration:
+### Network Configuration (Tailscale)
+
+For remote access via Tailscale, use the network configuration template in `.claude/mcp-network.json`:
 
 ```json
 {
@@ -53,10 +62,10 @@ For remote access via Tailscale, use the network configuration:
 }
 ```
 
-To switch to network mode:
-1. Copy `mcp-network.json` to `mcp.json`
-2. Replace `YOUR_TAILSCALE_IP` with your actual Tailscale IP address
-3. Restart Claude Code
+To set up network mode:
+1. Start the server with `STM32_SERVER_MODE=network python -m mcp_server`
+2. Register on client machines: `claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"`
+3. Replace `YOUR_TAILSCALE_IP` with your actual Tailscale IP address
 
 ## Available Slash Commands
 
@@ -202,9 +211,9 @@ curl http://100.x.x.x:8765/health
 
 ### Tools Not Appearing in Claude Code
 
-1. Restart Claude Code after modifying `mcp.json`
-2. Check that the server path is absolute and correct
-3. Verify the JSON syntax in `mcp.json`
+1. Restart Claude Code after adding the MCP server
+2. Verify the server is registered: `claude mcp list`
+3. Check the module is importable: `python -m mcp_server --help`
 
 ### No Search Results
 

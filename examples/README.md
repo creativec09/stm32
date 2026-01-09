@@ -8,10 +8,15 @@ This directory contains example configuration files for the STM32 MCP Documentat
 Example Claude Code MCP configuration for **local mode** (stdio transport).
 Use this when running Claude Code on the same machine as the server.
 
+**Recommended approach** - use Claude CLI:
+```bash
+claude mcp add stm32-docs -s user -- python -m mcp_server
+```
+
+**Manual approach** - copy config file:
 ```bash
 # Copy to your Claude Code config directory
-cp mcp.json.example ~/.config/claude/mcp.json  # Linux
-cp mcp.json.example ~/Library/Application Support/Claude/mcp.json  # macOS
+cp mcp.json.example ~/.claude.json  # Append to existing or create new
 ```
 
 ### mcp-network.json.example
@@ -28,11 +33,11 @@ cp config.env.example ../.env
 
 ## Quick Setup
 
-### For Local Development
+### For Local Development (Recommended)
 
-1. Copy the local MCP config:
+1. Register with Claude CLI:
    ```bash
-   cp mcp.json.example ~/.config/claude/mcp.json
+   claude mcp add stm32-docs -s user -- python -m mcp_server
    ```
 
 2. Install the package:
@@ -63,10 +68,13 @@ cp config.env.example ../.env
 
 3. Start the server:
    ```bash
-   stm32-docs
+   STM32_SERVER_MODE=network python -m mcp_server
    ```
 
-4. Connect from Claude Code on another machine using the network MCP config
+4. Register on client machines:
+   ```bash
+   claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
+   ```
 
 ## Environment Variables
 

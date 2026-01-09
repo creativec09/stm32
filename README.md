@@ -84,43 +84,62 @@ Or ask naturally - the agents are triggered automatically:
 
 ## Installation
 
-### Method 1: Install from GitHub (Recommended)
+### Quick Install (Recommended)
 
 ```bash
+# Install the package
 pip install git+https://github.com/creativec09/stm32-agents.git
+
+# Register with Claude Code
+claude mcp add stm32-docs -s user -- python -m mcp_server
 ```
 
-### Method 2: Install from Source
+### Development Install
 
 ```bash
 # Clone the repository
 git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
-# Create virtual environment
+# Create and activate virtual environment
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows PowerShell
 
 # Install in development mode
 pip install -e .
 
-# Or install with development dependencies
-pip install -e ".[dev]"
+# Register with Claude Code
+claude mcp add stm32-docs -s user -- python -m mcp_server
+
+# Or use the setup script (handles everything including doc ingestion)
+stm32-setup
 ```
 
-### Method 3: Manual Installation
+### Manual MCP Configuration (Alternative)
 
+If the `claude` CLI is not available, you can manually configure the MCP server.
+
+**Option A**: Use the project-level `.mcp.json` (for project-scoped access):
 ```bash
-# Clone repository
-git clone https://github.com/creativec09/stm32-agents.git
-cd stm32-agents
+# The .mcp.json at the project root is automatically detected by Claude Code
+# when you open the project directory
+```
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies directly
-pip install -r requirements.txt
+**Option B**: Add to user config `~/.claude.json`:
+```json
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "env": {
+        "STM32_SERVER_MODE": "local",
+        "STM32_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
 ```
 
 For detailed installation instructions including Claude Code integration and network mode setup, see [INSTALL.md](INSTALL.md).
@@ -131,21 +150,12 @@ For detailed installation instructions including Claude Code integration and net
 
 The MCP server integrates seamlessly with Claude Code. After installation:
 
-1. **Configure MCP** (automatic if using the provided `.claude/mcp.json`):
-   ```json
-   {
-     "mcpServers": {
-       "stm32-docs": {
-         "command": "/path/to/.venv/bin/python",
-         "args": ["/path/to/mcp_server/server.py"],
-         "env": {
-           "STM32_SERVER_MODE": "local",
-           "PYTHONPATH": "/path/to/stm32-agents"
-         }
-       }
-     }
-   }
+1. **Configure MCP** (using Claude CLI - recommended):
+   ```bash
+   claude mcp add stm32-docs -s user -- python -m mcp_server
    ```
+
+   Or use the project-level `.mcp.json` by opening the project directory in Claude Code.
 
 2. **Use Slash Commands**:
    ```
@@ -284,6 +294,7 @@ See [.env.example](.env.example) for all configuration options.
 stm32-agents/
 ├── mcp_server/              # MCP server implementation
 │   ├── server.py            # Main server with tools/resources
+│   ├── __main__.py          # Module entry point (python -m mcp_server)
 │   ├── config.py            # Configuration management
 │   ├── tools/               # Search tool implementations
 │   └── resources/           # MCP resource handlers
@@ -294,6 +305,7 @@ stm32-agents/
 │   ├── chroma_store.py      # ChromaDB wrapper
 │   └── metadata.py          # Metadata schemas and enums
 ├── scripts/                 # CLI utilities
+│   ├── setup.py             # Complete setup wizard
 │   ├── ingest_docs.py       # Document ingestion
 │   ├── start_server.py      # Server launcher
 │   ├── verify_mcp.py        # System validation
@@ -304,8 +316,9 @@ stm32-agents/
 ├── markdowns/               # Source STM32 documentation (80+ files)
 ├── data/                    # Generated data
 │   └── chroma_db/           # ChromaDB vector storage
-├── .claude/                 # Claude Code configuration
-│   ├── mcp.json             # MCP server configuration
+├── .mcp.json                # Project-level MCP configuration (Claude Code)
+├── .claude/                 # Claude Code project settings
+│   ├── settings.json        # Project-specific Claude settings
 │   ├── agents/              # Specialized agent definitions
 │   └── commands/            # Slash command definitions
 ├── pyproject.toml           # Package configuration

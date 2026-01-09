@@ -61,7 +61,19 @@ brew install python@3.11 git
 
 ## Quick Install (Recommended)
 
-The fastest way to get started - a single setup command handles everything:
+The fastest way to get started:
+
+```bash
+# Install the package
+pip install git+https://github.com/creativec09/stm32-agents.git
+
+# Register with Claude Code (recommended method)
+claude mcp add stm32-docs -s user -- python -m mcp_server
+```
+
+### Development Install
+
+For development or to run document ingestion:
 
 ```bash
 # 1. Clone the repository
@@ -76,12 +88,15 @@ source .venv/bin/activate  # Linux/macOS
 # 3. Install the package
 pip install -e .
 
-# 4. Run complete setup (configures MCP, installs agents, ingests docs)
+# 4. Register with Claude Code
+claude mcp add stm32-docs -s user -- python -m mcp_server
+
+# 5. (Optional) Run complete setup for agents and doc ingestion
 stm32-setup
 ```
 
-That's it! The `stm32-setup` command automatically:
-- Configures the MCP server for Claude Code
+The `stm32-setup` command automatically:
+- Uses `claude mcp add` when available (with manual fallback)
 - Installs all agents to `~/.claude/agents/`
 - Installs slash commands to `~/.claude/commands/`
 - Ingests documentation into ChromaDB
@@ -90,6 +105,9 @@ That's it! The `stm32-setup` command automatically:
 ### Verify It Works
 
 ```bash
+# List configured MCP servers
+claude mcp list
+
 # Check installation status
 stm32-setup --status
 
@@ -104,7 +122,8 @@ stm32-setup --status
 | Component | Location | Installed By |
 |-----------|----------|--------------|
 | Python package | Site-packages or editable | `pip install` |
-| MCP server config | `~/.claude/mcp.json` | `stm32-setup` |
+| MCP server config | User config (via `claude mcp add`) | `claude mcp add` or `stm32-setup` |
+| Project MCP config | `.mcp.json` (project root) | Already in repository |
 | Agent definitions | `~/.claude/agents/*.md` | `stm32-setup` |
 | Slash commands | `~/.claude/commands/*.md` | `stm32-setup` |
 | Vector database | `data/chroma_db/` | `stm32-setup --ingest` |
@@ -220,20 +239,40 @@ If you prefer manual control, here's what `stm32-setup` does:
 
 #### 1. MCP Configuration
 
-Create/update `~/.claude/mcp.json`:
+**Recommended: Use Claude CLI**
+```bash
+claude mcp add stm32-docs -s user -- python -m mcp_server
+```
 
+**Alternative: Project-level config**
+The repository includes a `.mcp.json` file at the project root that Claude Code automatically detects when you open the project directory:
 ```json
 {
   "mcpServers": {
     "stm32-docs": {
-      "command": "/path/to/stm32-agents/.venv/bin/python",
-      "args": ["/path/to/stm32-agents/mcp_server/server.py"],
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
       "env": {
         "STM32_SERVER_MODE": "local",
-        "STM32_LOG_LEVEL": "INFO",
-        "PYTHONPATH": "/path/to/stm32-agents"
-      },
-      "description": "STM32 documentation search. First startup takes ~90s for model loading."
+        "STM32_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+**Fallback: Manual user config**
+If the Claude CLI is not available, add to `~/.claude.json`:
+```json
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "env": {
+        "STM32_SERVER_MODE": "local",
+        "STM32_LOG_LEVEL": "INFO"
+      }
     }
   }
 }
@@ -261,7 +300,7 @@ python scripts/ingest_docs.py --clear
 
 Local mode uses stdio transport - Claude Code launches the server directly.
 
-After running `stm32-setup`, restart Claude Code and test:
+After running `claude mcp add stm32-docs -s user -- python -m mcp_server`, restart Claude Code and test:
 
 ```
 /stm32 How do I configure UART?
@@ -412,6 +451,16 @@ python scripts/download_db.py --force
 
 ## Uninstallation
 
+### Using Claude CLI (Recommended)
+
+```bash
+# Remove the MCP server configuration
+claude mcp remove stm32-docs -s user
+
+# Then uninstall the Python package
+pip uninstall stm32-mcp-docs
+```
+
 ### Using the Uninstall Command
 
 ```bash
@@ -425,8 +474,10 @@ pip uninstall stm32-mcp-docs
 ### Manual Removal
 
 ```bash
-# Remove from MCP configuration
-# Edit ~/.claude/mcp.json and remove "stm32-docs" entry
+# Remove from MCP configuration using Claude CLI
+claude mcp remove stm32-docs -s user
+
+# Or manually edit ~/.claude.json and remove "stm32-docs" entry
 
 # Remove agents
 rm ~/.claude/agents/{router,firmware,power,debug,safety,bootloader,security}*.md
