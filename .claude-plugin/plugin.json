@@ -1,6 +1,6 @@
 {
   "name": "stm32",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "STM32 microcontroller development tools with semantic documentation search, specialized agents, and HAL reference",
   "author": {
     "name": "creativec09",
@@ -9,7 +9,29 @@
   "repository": "https://github.com/creativec09/stm32",
   "license": "MIT",
   "keywords": ["stm32", "embedded", "microcontroller", "arm", "hal", "firmware"],
-  "agents": "./agents",
-  "commands": "./commands",
+  "agents": [
+    "./agents/router.md",
+    "./agents/triage.md",
+    "./agents/firmware.md",
+    "./agents/firmware-core.md",
+    "./agents/debug.md",
+    "./agents/bootloader.md",
+    "./agents/bootloader-programming.md",
+    "./agents/peripheral-comm.md",
+    "./agents/peripheral-analog.md",
+    "./agents/peripheral-graphics.md",
+    "./agents/power.md",
+    "./agents/power-management.md",
+    "./agents/safety.md",
+    "./agents/safety-certification.md",
+    "./agents/security.md",
+    "./agents/hardware-design.md"
+  ],
+  "commands": [
+    "./commands/stm32.md",
+    "./commands/stm32-hal.md",
+    "./commands/stm32-init.md",
+    "./commands/stm32-debug.md"
+  ],
   "mcpServers": "./mcp-config.json"
 }
