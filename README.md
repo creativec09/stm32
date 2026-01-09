@@ -36,13 +36,16 @@ An MCP (Model Context Protocol) server that provides semantic search over STM32 
 ### Prerequisites
 
 - Python 3.11 or higher
+- Git with LFS support (`git lfs install`)
 - Claude Code CLI (for Claude Code integration)
-- ~1GB disk space for embeddings and model cache
+- ~500MB disk space for pre-built vector database
 
-### One-Command Setup
+### Clone-and-Go Setup
+
+The repository includes a **pre-built ChromaDB vector database** with 13,800+ indexed document chunks. No ingestion required!
 
 ```bash
-# Clone the repository
+# Clone the repository (includes pre-built database via Git LFS)
 git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
@@ -54,7 +57,7 @@ source .venv/bin/activate  # Linux/macOS
 # Install the package
 pip install -e .
 
-# Run complete setup - configures MCP, installs agents, ingests docs
+# Run setup - configures MCP and installs agents (skips ingestion if DB exists)
 stm32-setup
 ```
 
@@ -62,8 +65,10 @@ The `stm32-setup` command automatically:
 - Configures the MCP server in `~/.claude/mcp.json`
 - Installs all agents to `~/.claude/agents/`
 - Installs slash commands to `~/.claude/commands/`
-- Ingests documentation into ChromaDB (5-10 min)
+- Detects pre-built database and skips ingestion
 - Verifies the installation
+
+**Note**: The first clone may take longer due to Git LFS downloading the database files (~190MB).
 
 ### Start Using
 
@@ -399,8 +404,8 @@ python scripts/test_retrieval.py
 
 - **Cold Start**: ~90 seconds (first request loads ML model)
 - **Warm Queries**: <100ms per query
-- **Ingestion**: 80 markdown files in 5-10 minutes (CPU)
-- **Storage**: ~500MB for ChromaDB database
+- **Ingestion**: 80 markdown files in 5-10 minutes (CPU) - **not required with pre-built DB**
+- **Storage**: ~190MB for ChromaDB database (included via Git LFS)
 
 ## Troubleshooting
 

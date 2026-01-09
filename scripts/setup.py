@@ -398,9 +398,14 @@ def install_agents(force: bool = False) -> bool:
     return True
 
 
-def run_ingestion(clear: bool = False, verbose: bool = False) -> bool:
+def run_ingestion(clear: bool = False, verbose: bool = False, force: bool = False) -> bool:
     """
     Run document ingestion to populate ChromaDB.
+
+    Args:
+        clear: Clear existing data before ingestion
+        verbose: Enable verbose output
+        force: Force ingestion even if database already has documents
     """
     print_step(3, "Ingesting STM32 documentation into vector database...")
 
@@ -409,15 +414,16 @@ def run_ingestion(clear: bool = False, verbose: bool = False) -> bool:
         print_error("Markdown documentation not found!")
         print_info("The markdowns/ directory with STM32 documentation is required.")
         print_info("If you installed via pip, you need to clone the repo to get the docs:")
-        print_info("  git clone https://github.com/YOUR_USERNAME/stm32-agents.git")
+        print_info("  git clone https://github.com/creativec09/stm32-agents.git")
         print_info("  cp -r stm32-agents/markdowns .")
         return False
 
     # Check if already populated
     is_populated, doc_count = check_chromadb_populated()
-    if is_populated and not clear:
-        print_info(f"ChromaDB already contains {doc_count} document chunks")
-        print_info("Use --clear to re-ingest all documents")
+    if is_populated and not clear and not force:
+        print_success(f"Pre-built database detected: {doc_count} document chunks")
+        print_info("Skipping ingestion (database already populated)")
+        print_info("Use --force-ingest to rebuild, or --clear to wipe and rebuild")
         return True
 
     # Import and run ingestion
@@ -651,12 +657,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  stm32-setup                    Run complete setup
+  stm32-setup                    Run complete setup (skips ingestion if DB exists)
   stm32-setup --status           Show installation status
   stm32-setup --mcp-only         Only configure MCP server
   stm32-setup --agents           Only install agents
-  stm32-setup --ingest           Only run documentation ingestion
-  stm32-setup --ingest --clear   Re-ingest all documentation
+  stm32-setup --ingest           Only run documentation ingestion (skips if exists)
+  stm32-setup --force-ingest     Force re-ingestion even if DB exists
+  stm32-setup --ingest --clear   Clear and re-ingest all documentation
   stm32-setup --verify           Verify installation
   stm32-setup --uninstall        Remove configurations
         """
@@ -701,6 +708,11 @@ Examples:
         '--clear',
         action='store_true',
         help='Clear existing ChromaDB data before ingestion'
+    )
+    parser.add_argument(
+        '--force-ingest',
+        action='store_true',
+        help='Force ingestion even if pre-built database exists'
     )
     parser.add_argument(
         '--verbose', '-v',
@@ -751,7 +763,8 @@ Examples:
             success = False
 
     if run_ingest:
-        if not run_ingestion(args.clear, args.verbose):
+        force_ingest = getattr(args, 'force_ingest', False)
+        if not run_ingestion(args.clear, args.verbose, force_ingest):
             success = False
 
     # Always verify at the end of full setup

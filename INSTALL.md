@@ -30,7 +30,8 @@ This guide provides detailed installation instructions for the STM32 MCP Documen
 ### Recommended
 
 - **4GB+ RAM**: 8GB recommended for faster embedding generation
-- **SSD Storage**: ~1GB free space for embeddings and model cache
+- **SSD Storage**: ~500MB free space for pre-built database and model cache
+- **Git LFS**: Required for cloning the pre-built vector database
 
 ### Platform-Specific Notes
 
@@ -61,19 +62,43 @@ brew install python@3.11 git
 
 ## Quick Install (Recommended)
 
-The fastest way to get started:
+The repository includes a **pre-built ChromaDB vector database** (~190MB via Git LFS) with 13,800+ indexed document chunks. No ingestion required - just clone and go!
+
+### Clone-and-Go Setup
 
 ```bash
+# Ensure Git LFS is installed
+git lfs install
+
+# Clone the repository (includes pre-built database)
+git clone https://github.com/creativec09/stm32-agents.git
+cd stm32-agents
+
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows PowerShell
+
 # Install the package
-pip install git+https://github.com/creativec09/stm32-agents.git
+pip install -e .
 
 # Register with Claude Code (recommended method)
 claude mcp add stm32-docs -s user -- python -m mcp_server
+
+# (Optional) Run complete setup for agents and slash commands
+stm32-setup
 ```
 
-### Development Install
+The `stm32-setup` command automatically:
+- Uses `claude mcp add` when available (with manual fallback)
+- Installs all agents to `~/.claude/agents/`
+- Installs slash commands to `~/.claude/commands/`
+- **Detects pre-built database and skips ingestion**
+- Verifies the installation
 
-For development or to run document ingestion:
+### Development Install (with Re-ingestion)
+
+For development or to rebuild the vector database:
 
 ```bash
 # 1. Clone the repository
@@ -88,19 +113,9 @@ source .venv/bin/activate  # Linux/macOS
 # 3. Install the package
 pip install -e .
 
-# 4. Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
-
-# 5. (Optional) Run complete setup for agents and doc ingestion
-stm32-setup
+# 4. (Optional) Force re-ingestion to rebuild database
+stm32-setup --ingest --clear
 ```
-
-The `stm32-setup` command automatically:
-- Uses `claude mcp add` when available (with manual fallback)
-- Installs all agents to `~/.claude/agents/`
-- Installs slash commands to `~/.claude/commands/`
-- Ingests documentation into ChromaDB
-- Verifies the installation
 
 ### Verify It Works
 
@@ -126,7 +141,7 @@ stm32-setup --status
 | Project MCP config | `.mcp.json` (project root) | Already in repository |
 | Agent definitions | `~/.claude/agents/*.md` | `stm32-setup` |
 | Slash commands | `~/.claude/commands/*.md` | `stm32-setup` |
-| Vector database | `data/chroma_db/` | `stm32-setup --ingest` |
+| Vector database | `data/chroma_db/` | Pre-built (Git LFS) or `stm32-setup --ingest` |
 | CLI commands | `stm32-*` | `pip install` |
 
 ### CLI Commands Available After Install
@@ -137,7 +152,7 @@ stm32-setup --status
 | `stm32-setup --status` | Show installation status |
 | `stm32-setup --verify` | Verify installation |
 | `stm32-server` | Start the MCP server |
-| `stm32-ingest` | Ingest documentation |
+| `stm32-ingest` | Ingest documentation (optional - DB pre-built) |
 | `stm32-search` | Search from command line |
 | `stm32-validate` | Full system validation |
 
@@ -163,9 +178,9 @@ stm32-setup --ingest
 stm32-setup --ingest --clear
 ```
 
-### Option B: Download Pre-built Database
+### Option B: Re-build Database from Source
 
-Skip the 5-10 minute ingestion process by downloading a pre-built database:
+The pre-built database is included via Git LFS. To rebuild from scratch:
 
 ```bash
 # Clone and install
@@ -174,12 +189,11 @@ cd stm32-agents
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
-# Download pre-built database (if available in releases)
-python scripts/download_db.py
+# Force re-ingestion (rebuilds database from markdown files)
+stm32-setup --ingest --clear
 
-# Run setup without ingestion
-stm32-setup --mcp-only
-stm32-setup --agents
+# Or use the ingest script directly
+python scripts/ingest_docs.py --clear
 ```
 
 ### Option C: Install from GitHub (Without Clone)
