@@ -70,23 +70,139 @@ logger = logging.getLogger("stm32-docs")
 
 
 # ============================================================================
-# AUTO-INSTALLATION - Install bundled agents on first run
+# AUTO-INSTALLATION - Install bundled agents as Claude Code skills
 # ============================================================================
+
+def _extract_agent_metadata(content: str, filename: str) -> dict:
+    """
+    Extract metadata from agent file content for skill generation.
+
+    Parses the agent markdown to extract:
+    - name: From filename or first heading
+    - description: From ## Description section or first paragraph
+    - examples: From <examples> block
+
+    Returns:
+        dict with 'name', 'description', 'examples' keys
+    """
+    lines = content.split('\n')
+
+    # Extract name from filename (remove .md, convert dashes to spaces)
+    name = filename.replace('.md', '').replace('-', ' ').title()
+    name = f"stm32-{filename.replace('.md', '')}"
+
+    # Extract description - look for ## Description section or first paragraph
+    description = ""
+    in_description = False
+    for i, line in enumerate(lines):
+        if line.strip().lower() == '## description':
+            in_description = True
+            continue
+        if in_description:
+            if line.startswith('#') or line.startswith('<'):
+                break
+            if line.strip():
+                description = line.strip()
+                break
+
+    if not description:
+        # Fallback: use first non-heading, non-empty line
+        for line in lines:
+            if line.strip() and not line.startswith('#'):
+                description = line.strip()[:100]
+                break
+
+    # Extract examples from <examples> block
+    examples = []
+    in_examples = False
+    for line in lines:
+        if '<examples>' in line.lower():
+            in_examples = True
+            continue
+        if '</examples>' in line.lower():
+            break
+        if in_examples and line.strip().startswith('-'):
+            example = line.strip().lstrip('- ').split('->')[0].strip().strip('"')
+            if example:
+                examples.append(example)
+
+    return {
+        'name': name,
+        'description': description[:200] if description else f"STM32 {name} specialist agent",
+        'examples': examples[:5]  # Limit to 5 examples
+    }
+
+
+def _generate_skill_content(agent_content: str, metadata: dict) -> str:
+    """
+    Generate Claude Code skill format from agent content.
+
+    Creates a skill file with:
+    - YAML frontmatter (name, description)
+    - Usage instructions
+    - The agent's expertise summary
+    """
+    # Build examples section
+    examples_text = ""
+    if metadata['examples']:
+        examples_text = "\n## Examples\n\n```\n"
+        for ex in metadata['examples']:
+            examples_text += f"/{metadata['name']} {ex}\n"
+        examples_text += "```\n"
+
+    skill_content = f'''---
+name: {metadata['name']}
+description: {metadata['description']}
+---
+
+# {metadata['name'].replace('-', ' ').title()}
+
+{metadata['description']}
+{examples_text}
+## What This Does
+
+When invoked, this skill activates the {metadata['name']} specialist agent which uses the stm32-docs MCP server tools for documentation-backed answers.
+
+## Available MCP Tools
+
+| Tool | Purpose |
+|------|---------|
+| `search_stm32_docs` | General semantic search |
+| `get_peripheral_docs` | Peripheral documentation |
+| `get_code_examples` | Find code examples |
+| `lookup_hal_function` | HAL function lookup |
+| `troubleshoot_error` | Error troubleshooting |
+| `get_init_sequence` | Initialization code |
+| `get_clock_config` | Clock configuration |
+
+## Agent Instructions
+
+The following instructions guide this specialist agent:
+
+---
+
+{agent_content}
+'''
+    return skill_content
+
 
 def install_agents_if_needed() -> bool:
     """
-    Auto-install bundled agents to user's Claude config directory.
+    Auto-install bundled agents as Claude Code skills/commands.
 
-    This runs on MCP server startup and installs STM32 agents to ~/.claude/agents/
-    if they haven't been installed before. Uses a marker file to track installation.
+    This runs on MCP server startup and installs STM32 agents to ~/.claude/commands/
+    in the proper skill format if they haven't been installed before.
+
+    Claude Code's /agents command reads from ~/.claude/commands/, so we convert
+    our agent files to the skill format with YAML frontmatter.
 
     Returns:
         True if agents were installed, False if already installed or no agents found
     """
-    marker = Path.home() / '.claude' / '.stm32-agents-installed'
+    marker = Path.home() / '.claude' / '.stm32-skills-installed'
 
     if marker.exists():
-        logger.debug("STM32 agents already installed (marker file exists)")
+        logger.debug("STM32 skills already installed (marker file exists)")
         return False
 
     # Find bundled agents in package
@@ -97,11 +213,11 @@ def install_agents_if_needed() -> bool:
         logger.warning(f"No bundled agents found at {source_agents}")
         return False
 
-    # Create target directory
-    target_dir = Path.home() / '.claude' / 'agents'
+    # Create target directory for commands/skills
+    target_dir = Path.home() / '.claude' / 'commands'
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy agents, skipping templates and guides
+    # Convert and install agents as skills
     installed = 0
     skipped = []
     for agent_file in source_agents.glob('*.md'):
@@ -110,18 +226,40 @@ def install_agents_if_needed() -> bool:
             skipped.append(agent_file.name)
             continue
 
-        target_path = target_dir / agent_file.name
-        shutil.copy2(agent_file, target_path)
-        installed += 1
+        # Skip router/triage - it's internal orchestration, not a user-facing skill
+        if agent_file.name in ('router.md', 'triage.md'):
+            skipped.append(agent_file.name)
+            continue
+
+        try:
+            # Read agent content
+            agent_content = agent_file.read_text(encoding='utf-8')
+
+            # Extract metadata
+            metadata = _extract_agent_metadata(agent_content, agent_file.name)
+
+            # Generate skill content
+            skill_content = _generate_skill_content(agent_content, metadata)
+
+            # Write skill file with stm32- prefix
+            skill_name = f"stm32-{agent_file.stem}.md"
+            target_path = target_dir / skill_name
+            target_path.write_text(skill_content, encoding='utf-8')
+            installed += 1
+
+        except Exception as e:
+            logger.warning(f"Failed to convert agent {agent_file.name}: {e}")
+            skipped.append(agent_file.name)
 
     # Create marker file to prevent re-installation
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.touch()
 
     logger.info("=" * 60)
-    logger.info(f"Auto-installed {installed} STM32 agents to {target_dir}")
+    logger.info(f"Auto-installed {installed} STM32 skills to {target_dir}")
     if skipped:
-        logger.debug(f"Skipped non-agent files: {', '.join(skipped)}")
+        logger.debug(f"Skipped files: {', '.join(skipped)}")
+    logger.info("Run '/agents' in Claude Code to see installed skills")
     logger.info("=" * 60)
 
     return True

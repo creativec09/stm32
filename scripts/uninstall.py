@@ -15,9 +15,9 @@ This is documented in GitHub issues:
 Both remain unimplemented, so manual cleanup is required.
 
 What this removes:
-1. STM32 agents from ~/.claude/agents/ (16 files)
-2. STM32 slash commands from ~/.claude/commands/ (4 files)
-3. Marker file ~/.claude/.stm32-agents-installed
+1. STM32 skills from ~/.claude/commands/ (auto-installed as Claude Code skills)
+2. Legacy agents from ~/.claude/agents/ (if present from older versions)
+3. Marker files ~/.claude/.stm32-skills-installed and ~/.claude/.stm32-agents-installed
 4. ChromaDB database (user's data directory or package data directory)
 5. MCP configuration entry from ~/.claude.json (if not using CLI)
 
@@ -169,8 +169,8 @@ def find_chromadb_locations() -> List[Path]:
     return locations
 
 
-# List of STM32 agent files installed by this package
-STM32_AGENTS = [
+# List of STM32 agent files (legacy - from older versions in ~/.claude/agents/)
+STM32_LEGACY_AGENTS = [
     'router.md',
     'triage.md',
     'firmware.md',
@@ -189,12 +189,28 @@ STM32_AGENTS = [
     'hardware-design.md',
 ]
 
-# List of STM32 slash commands
-STM32_COMMANDS = [
+# List of STM32 skills/commands installed to ~/.claude/commands/
+# These are auto-generated from agent files with stm32- prefix
+STM32_SKILLS = [
+    # Auto-installed skills (converted from agents)
+    'stm32-bootloader-programming.md',
+    'stm32-bootloader.md',
+    'stm32-debug.md',
+    'stm32-firmware-core.md',
+    'stm32-firmware.md',
+    'stm32-hardware-design.md',
+    'stm32-peripheral-analog.md',
+    'stm32-peripheral-comm.md',
+    'stm32-peripheral-graphics.md',
+    'stm32-power-management.md',
+    'stm32-power.md',
+    'stm32-safety-certification.md',
+    'stm32-safety.md',
+    'stm32-security.md',
+    # Core skills (may have been manually created or from older versions)
     'stm32.md',
     'stm32-hal.md',
     'stm32-init.md',
-    'stm32-debug.md',
 ]
 
 
@@ -211,27 +227,31 @@ def collect_items_to_remove(keep_db: bool = False) -> Tuple[List[Path], List[Pat
 
     claude_dir = get_claude_config_dir()
 
-    # Agents
+    # Skills/Commands (primary installation location)
+    commands_dir = claude_dir / 'commands'
+    for skill in STM32_SKILLS:
+        skill_path = commands_dir / skill
+        if skill_path.exists():
+            files.append(skill_path)
+            total_size += skill_path.stat().st_size
+
+    # Legacy agents (from older versions, now deprecated)
     agents_dir = claude_dir / 'agents'
-    for agent in STM32_AGENTS:
+    for agent in STM32_LEGACY_AGENTS:
         agent_path = agents_dir / agent
         if agent_path.exists():
             files.append(agent_path)
             total_size += agent_path.stat().st_size
 
-    # Commands
-    commands_dir = claude_dir / 'commands'
-    for cmd in STM32_COMMANDS:
-        cmd_path = commands_dir / cmd
-        if cmd_path.exists():
-            files.append(cmd_path)
-            total_size += cmd_path.stat().st_size
-
-    # Marker file
-    marker = claude_dir / '.stm32-agents-installed'
-    if marker.exists():
-        files.append(marker)
-        total_size += marker.stat().st_size
+    # Marker files (both old and new names)
+    marker_files = [
+        claude_dir / '.stm32-skills-installed',    # New marker (skills)
+        claude_dir / '.stm32-agents-installed',    # Legacy marker (agents)
+    ]
+    for marker in marker_files:
+        if marker.exists():
+            files.append(marker)
+            total_size += marker.stat().st_size
 
     # ChromaDB database
     if not keep_db:
@@ -356,23 +376,23 @@ def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -
     claude_dir = get_claude_config_dir()
 
     # Group by category
-    agents = [f for f in files if 'agents' in str(f)]
-    commands = [f for f in files if 'commands' in str(f)]
-    marker = [f for f in files if f.name == '.stm32-agents-installed']
+    skills = [f for f in files if 'commands' in str(f)]
+    legacy_agents = [f for f in files if 'agents' in str(f) and not f.name.startswith('.')]
+    markers = [f for f in files if f.name.startswith('.stm32-')]
 
-    if agents:
-        print(f"  {Colors.CYAN}Agents ({len(agents)} files):{Colors.RESET}")
-        for f in agents:
+    if skills:
+        print(f"  {Colors.CYAN}Skills/Commands ({len(skills)} files):{Colors.RESET}")
+        for f in skills:
             print(f"    - {f.relative_to(claude_dir.parent)}")
 
-    if commands:
-        print(f"\n  {Colors.CYAN}Slash Commands ({len(commands)} files):{Colors.RESET}")
-        for f in commands:
+    if legacy_agents:
+        print(f"\n  {Colors.CYAN}Legacy Agents ({len(legacy_agents)} files):{Colors.RESET}")
+        for f in legacy_agents:
             print(f"    - {f.relative_to(claude_dir.parent)}")
 
-    if marker:
+    if markers:
         print(f"\n  {Colors.CYAN}Marker Files:{Colors.RESET}")
-        for f in marker:
+        for f in markers:
             print(f"    - {f.relative_to(claude_dir.parent)}")
 
     if dirs:
