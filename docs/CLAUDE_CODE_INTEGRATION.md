@@ -21,7 +21,7 @@ The simplest way to install is via `uvx`:
 
 ```bash
 # For private repository - include your GitHub Personal Access Token
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
 Replace `TOKEN` with your GitHub PAT (requires `repo` scope).
@@ -40,7 +40,7 @@ First run takes 5-10 minutes. Subsequent starts are instant.
 pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
 
 # Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 ### Alternative: Development Installation
@@ -58,7 +58,7 @@ source .venv/bin/activate
 pip install -e .
 
 # Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 ### Manual Configuration
@@ -206,7 +206,7 @@ python -m mcp_server
 On client machines, register with SSE transport:
 
 ```bash
-claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
+claude mcp add stm32-docs --scope user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
 ```
 
 Or manually add to `~/.claude.json`:

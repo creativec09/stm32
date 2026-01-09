@@ -86,7 +86,7 @@ The fastest way to use this MCP server from a private repository is via `uvx`. T
 
 ```bash
 # Replace TOKEN with your GitHub Personal Access Token
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
 ### Using a Specific Version Tag
@@ -95,7 +95,7 @@ For production use, pin to a specific version:
 
 ```bash
 # Install from a tagged release (recommended for stability)
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.0.0 stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.1.0 stm32-mcp-docs
 ```
 
 Available tags:
@@ -139,10 +139,10 @@ To update to a newer version:
 
 ```bash
 # Remove old configuration
-claude mcp remove stm32-docs -s user
+claude mcp remove stm32-docs --scope user
 
 # Add with new version
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.1.0 stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.1.0 stm32-mcp-docs
 ```
 
 ---
@@ -167,7 +167,7 @@ source .venv/bin/activate  # Linux/macOS
 pip install -e .
 
 # Register with Claude Code (recommended method)
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 
 # (Optional) Run complete setup for agents and slash commands
 stm32-setup
@@ -357,7 +357,7 @@ If you prefer manual control, here's what `stm32-setup` does:
 
 **Recommended: Use Claude CLI**
 ```bash
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 **Alternative: Project-level config**
@@ -416,7 +416,7 @@ python scripts/ingest_docs.py --clear
 
 Local mode uses stdio transport - Claude Code launches the server directly.
 
-After running `claude mcp add stm32-docs -s user -- python -m mcp_server`, restart Claude Code and test:
+After running `claude mcp add stm32-docs --scope user -- python -m mcp_server`, restart Claude Code and test:
 
 ```
 /stm32 How do I configure UART?
@@ -571,7 +571,7 @@ python scripts/download_db.py --force
 
 ```bash
 # Remove the MCP server configuration
-claude mcp remove stm32-docs -s user
+claude mcp remove stm32-docs --scope user
 
 # Then uninstall the Python package
 pip uninstall stm32-mcp-docs
@@ -591,7 +591,7 @@ pip uninstall stm32-mcp-docs
 
 ```bash
 # Remove from MCP configuration using Claude CLI
-claude mcp remove stm32-docs -s user
+claude mcp remove stm32-docs --scope user
 
 # Or manually edit ~/.claude.json and remove "stm32-docs" entry
 

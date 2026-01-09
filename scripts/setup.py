@@ -227,7 +227,7 @@ def configure_mcp_via_cli(python_path: Path) -> bool:
     """
     Configure MCP server using the Claude CLI.
 
-    Uses: claude mcp add stm32-docs -s user -- python -m mcp_server
+    Uses: claude mcp add stm32-docs --scope user -- python -m mcp_server
 
     Returns:
         True if successful, False otherwise
@@ -680,7 +680,7 @@ def uninstall():
     print_info("  - The project directory")
     print_info("")
     print_info("For complete uninstall including uvx cache cleanup:")
-    print_info("  1. claude mcp remove stm32-docs -s user")
+    print_info("  1. claude mcp remove stm32-docs --scope user")
     print_info("  2. stm32-uninstall")
 
 

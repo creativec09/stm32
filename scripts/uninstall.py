@@ -3,7 +3,7 @@
 STM32 MCP Documentation Server - Complete Uninstall Script
 
 This script provides a comprehensive uninstall that removes all STM32 MCP
-artifacts when the MCP server is removed via `claude mcp remove stm32-docs -s user`.
+artifacts when the MCP server is removed via `claude mcp remove stm32-docs --scope user`.
 
 Since Claude Code/MCP protocol doesn't support uninstall hooks, users must run
 this script manually after running `claude mcp remove`.
@@ -28,7 +28,7 @@ Usage:
     stm32-uninstall --keep-db    # Keep ChromaDB database
 
 Complete Uninstall Steps:
-    1. claude mcp remove stm32-docs -s user  # Remove MCP config
+    1. claude mcp remove stm32-docs --scope user  # Remove MCP config
     2. stm32-uninstall                       # Clean up everything else
 """
 
@@ -336,7 +336,7 @@ def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -
     if check_claude_cli_available() and check_mcp_still_registered():
         print_warning("stm32-docs is still registered as an MCP server!")
         print_info("Run this command first to remove the MCP configuration:")
-        print(f"\n    {Colors.CYAN}claude mcp remove stm32-docs -s user{Colors.RESET}\n")
+        print(f"\n    {Colors.CYAN}claude mcp remove stm32-docs --scope user{Colors.RESET}\n")
         if not yes:
             response = input("Continue anyway? [y/N]: ").strip().lower()
             if response != 'y':
@@ -453,7 +453,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Complete Uninstall Steps:
-  1. claude mcp remove stm32-docs -s user  # Remove MCP configuration
+  1. claude mcp remove stm32-docs --scope user  # Remove MCP configuration
   2. stm32-uninstall                       # Clean up agents, commands, and database
 
 Examples:

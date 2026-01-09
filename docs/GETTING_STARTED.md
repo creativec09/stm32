@@ -32,7 +32,7 @@ The STM32 MCP Documentation Server provides semantic search over 80 STM32 refere
 
 ```bash
 # For private repository - include your GitHub token
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
 Replace `TOKEN` with your GitHub Personal Access Token (requires `repo` scope).
@@ -112,7 +112,7 @@ source .venv/bin/activate  # Linux/macOS
 pip install -e .
 
 # Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 ### pip Install
@@ -122,7 +122,7 @@ claude mcp add stm32-docs -s user -- python -m mcp_server
 pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
 
 # Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 ### Manual MCP Configuration

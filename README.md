@@ -23,7 +23,7 @@ An MCP (Model Context Protocol) server that provides semantic search over STM32 
 
 ```bash
 # Install the MCP server (auto-installs agents + docs on first run)
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
 Replace `TOKEN` with your GitHub Personal Access Token (requires `repo` scope for private repository).
@@ -79,7 +79,7 @@ Or ask naturally:
 
 ```bash
 # One command installs everything
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
 ### Method 2: pip Installation
@@ -89,7 +89,7 @@ claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/cre
 pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
 
 # Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 ### Method 3: Development Installation
@@ -108,7 +108,7 @@ source .venv/bin/activate  # Linux/macOS
 pip install -e ".[dev]"
 
 # Register with Claude Code
-claude mcp add stm32-docs -s user -- python -m mcp_server
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
 ### Manual MCP Configuration
@@ -213,7 +213,7 @@ For accessing from multiple machines:
 STM32_SERVER_MODE=network python -m mcp_server --port 8765
 
 # On client machines
-claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
+claude mcp add stm32-docs --scope user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
 ```
 
 ## Configuration
@@ -335,7 +335,7 @@ To completely remove the STM32 MCP server and all its components:
 
 ```bash
 # Step 1: Remove MCP server configuration
-claude mcp remove stm32-docs -s user
+claude mcp remove stm32-docs --scope user
 
 # Step 2: Clean up agents, commands, and database
 stm32-uninstall

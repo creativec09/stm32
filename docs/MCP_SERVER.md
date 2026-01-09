@@ -21,7 +21,7 @@ The STM32 MCP Server exposes STM32 documentation through the MCP protocol, allow
 
 ```bash
 # One command installs everything
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
 Replace `TOKEN` with your GitHub Personal Access Token.
@@ -73,7 +73,7 @@ Default mode for local Claude Code integration. Uses standard input/output for M
 
 ```bash
 # Automatic via uvx
-claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 
 # Or manually
 python -m mcp_server
@@ -473,7 +473,7 @@ For remote access via Tailscale:
 
 2. **Configure Client**:
    ```bash
-   claude mcp add stm32-docs -s user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
+   claude mcp add stm32-docs --scope user --type sse --url "http://YOUR_TAILSCALE_IP:8765/sse"
    ```
 
 ### Network Endpoints
