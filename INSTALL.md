@@ -31,8 +31,7 @@ This guide provides detailed installation instructions for the STM32 MCP Documen
 ### Recommended
 
 - **4GB+ RAM**: 8GB recommended for faster embedding generation
-- **SSD Storage**: ~500MB free space for pre-built database and model cache
-- **Git LFS**: Required for cloning the pre-built vector database
+- **SSD Storage**: ~500MB free space for auto-built database and model cache
 
 ### Platform-Specific Notes
 
@@ -148,15 +147,12 @@ claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/cre
 
 ## Quick Install (Clone-and-Go)
 
-The repository includes a **pre-built ChromaDB vector database** (~190MB via Git LFS) with 13,800+ indexed document chunks. No ingestion required - just clone and go!
+The MCP server features **automatic database building** on first run. Just install and start using - the documentation index builds automatically from the included markdown files!
 
 ### Clone-and-Go Setup
 
 ```bash
-# Ensure Git LFS is installed
-git lfs install
-
-# Clone the repository (includes pre-built database)
+# Clone the repository
 git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
@@ -179,12 +175,23 @@ The `stm32-setup` command automatically:
 - Uses `claude mcp add` when available (with manual fallback)
 - Installs all agents to `~/.claude/agents/`
 - Installs slash commands to `~/.claude/commands/`
-- **Detects pre-built database and skips ingestion**
 - Verifies the installation
+
+**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests all documentation from the `markdowns/` directory. This takes 5-10 minutes and you will see progress logs like:
+
+```
+Database empty, starting auto-ingestion...
+Found 80 markdown files in markdowns/
+[10/80] Processed an4013-introduction-to-timers...
+[20/80] Processed an4435-guidelines-for-obtaining...
+...
+Ingestion complete!
+Ready - 13,815 chunks indexed
+```
 
 ### Development Install (with Re-ingestion)
 
-For development or to rebuild the vector database:
+For development or to force rebuild the vector database:
 
 ```bash
 # 1. Clone the repository
@@ -201,6 +208,9 @@ pip install -e .
 
 # 4. (Optional) Force re-ingestion to rebuild database
 stm32-setup --ingest --clear
+
+# Or delete the database to trigger auto-ingestion on next start
+rm -rf data/chroma_db/
 ```
 
 ### Verify It Works
@@ -227,7 +237,7 @@ stm32-setup --status
 | Project MCP config | `.mcp.json` (project root) | Already in repository |
 | Agent definitions | `~/.claude/agents/*.md` | `stm32-setup` |
 | Slash commands | `~/.claude/commands/*.md` | `stm32-setup` |
-| Vector database | `data/chroma_db/` | Pre-built (Git LFS) or `stm32-setup --ingest` |
+| Vector database | `data/chroma_db/` | Auto-built on first run or `stm32-setup --ingest` |
 | CLI commands | `stm32-*` | `pip install` |
 
 ### CLI Commands Available After Install
@@ -238,7 +248,7 @@ stm32-setup --status
 | `stm32-setup --status` | Show installation status |
 | `stm32-setup --verify` | Verify installation |
 | `stm32-server` | Start the MCP server |
-| `stm32-ingest` | Ingest documentation (optional - DB pre-built) |
+| `stm32-ingest` | Ingest documentation (auto-runs on first start if needed) |
 | `stm32-search` | Search from command line |
 | `stm32-validate` | Full system validation |
 

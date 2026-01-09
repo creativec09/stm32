@@ -83,13 +83,12 @@ dmypy.json
 # =============================================================================
 # Data & Storage (Generated)
 # =============================================================================
-# Note: data/chroma_db/ is INCLUDED in the repo (pre-built vector database)
-# Uncomment the line below if you want to exclude it:
-# data/chroma_db/
+# ChromaDB is auto-built on first run, no need to include in repo
+data/chroma_db/
 data/chunks/
-# Note: *.sqlite3 exception for chroma.sqlite3 which is part of the vector DB
 *.db
 *.sqlite
+*.sqlite3
 
 # =============================================================================
 # Logs

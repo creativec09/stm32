@@ -36,16 +36,16 @@ An MCP (Model Context Protocol) server that provides semantic search over STM32 
 ### Prerequisites
 
 - Python 3.11 or higher
-- Git with LFS support (`git lfs install`)
+- Git
 - Claude Code CLI (for Claude Code integration)
-- ~500MB disk space for pre-built vector database
+- ~500MB disk space for vector database (auto-built on first run)
 
 ### Clone-and-Go Setup
 
-The repository includes a **pre-built ChromaDB vector database** with 13,800+ indexed document chunks. No ingestion required!
+The server features **automatic database building** on first run. Just install and start using - the documentation index builds automatically!
 
 ```bash
-# Clone the repository (includes pre-built database via Git LFS)
+# Clone the repository
 git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
@@ -57,7 +57,7 @@ source .venv/bin/activate  # Linux/macOS
 # Install the package
 pip install -e .
 
-# Run setup - configures MCP and installs agents (skips ingestion if DB exists)
+# Run setup - configures MCP and installs agents
 stm32-setup
 ```
 
@@ -65,10 +65,9 @@ The `stm32-setup` command automatically:
 - Configures the MCP server in `~/.claude/mcp.json`
 - Installs all agents to `~/.claude/agents/`
 - Installs slash commands to `~/.claude/commands/`
-- Detects pre-built database and skips ingestion
 - Verifies the installation
 
-**Note**: The first clone may take longer due to Git LFS downloading the database files (~190MB).
+**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests all documentation from the `markdowns/` directory. This takes 5-10 minutes and you will see progress logs. Subsequent starts are instant.
 
 ### Start Using
 
@@ -423,10 +422,10 @@ python scripts/test_retrieval.py
 
 ### Performance Characteristics
 
-- **Cold Start**: ~90 seconds (first request loads ML model)
+- **First Run**: 5-10 minutes (auto-ingests 80+ markdown files and loads ML model)
+- **Subsequent Starts**: ~90 seconds (loads ML model from cache)
 - **Warm Queries**: <100ms per query
-- **Ingestion**: 80 markdown files in 5-10 minutes (CPU) - **not required with pre-built DB**
-- **Storage**: ~190MB for ChromaDB database (included via Git LFS)
+- **Storage**: ~190MB for ChromaDB database (auto-built on first run)
 
 ## Troubleshooting
 

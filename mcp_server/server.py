@@ -7,6 +7,11 @@ Supports both local (stdio) and network (HTTP/SSE) modes for Tailscale.
 This is the main entry point for the MCP server. It registers all tools,
 resources, and prompts that are exposed to MCP clients.
 
+Features:
+- Auto-ingestion on first run when database is empty
+- Status and health resources for monitoring
+- Context-aware tools with helpful error messages
+
 Usage:
     # Local mode (stdio for Claude Code)
     python -m mcp_server.server
@@ -20,14 +25,17 @@ Environment Variables:
     STM32_PORT: Port for network mode (default: 8765)
 """
 
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 import sys
 import logging
+import json
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Context
 from storage.chroma_store import STM32ChromaStore
 from storage.metadata import Peripheral, DocType
 from mcp_server.config import settings, ServerMode
@@ -59,57 +67,242 @@ logging.basicConfig(
 )
 logger = logging.getLogger("stm32-docs")
 
-# Initialize FastMCP server
-# Note: FastMCP doesn't support version/description directly in constructor
-# The server name is used for identification in the MCP protocol
+
+# ============================================================================
+# SERVER CONTEXT - Shared state via lifespan
+# ============================================================================
+
+@dataclass
+class ServerContext:
+    """
+    Server context shared across all handlers via lifespan.
+
+    This dataclass holds the initialized store and resources,
+    making them available to all tools and resources through
+    the request context.
+    """
+    store: STM32ChromaStore
+    resources: DocumentationResources
+    status: str  # "ready", "setup_required", "ingesting"
+    chunk_count: int
+    message: str
+
+
+@asynccontextmanager
+async def server_lifespan(server: FastMCP):
+    """
+    Server lifespan context manager.
+
+    This is called when the server starts up. It:
+    1. Initializes the ChromaDB store
+    2. Checks if the database is empty
+    3. If empty and markdown files exist, auto-runs ingestion
+    4. Creates the ServerContext for sharing across requests
+    """
+    logger.info("=" * 60)
+    logger.info(f"STM32 MCP Server v{settings.SERVER_VERSION} starting...")
+    logger.info("=" * 60)
+
+    # Ensure required directories exist
+    settings.ensure_directories()
+
+    # Initialize the ChromaDB store
+    logger.info(f"Initializing ChromaDB store at {settings.CHROMA_DB_PATH}")
+    store = STM32ChromaStore(
+        persist_dir=settings.CHROMA_DB_PATH,
+        collection_name=settings.COLLECTION_NAME,
+        embedding_model=settings.EMBEDDING_MODEL
+    )
+
+    chunk_count = store.count()
+    logger.info(f"Current database: {chunk_count} chunks")
+
+    # Check if database is empty and needs ingestion
+    if chunk_count == 0:
+        # Check if markdown files exist
+        from mcp_server.ingestion import find_markdown_files
+        md_files = find_markdown_files(settings.RAW_DOCS_DIR)
+
+        if md_files:
+            logger.info("=" * 60)
+            logger.info("Database empty, starting auto-ingestion...")
+            logger.info(f"Found {len(md_files)} markdown files in {settings.RAW_DOCS_DIR}")
+            logger.info("=" * 60)
+
+            # Run ingestion
+            from mcp_server.ingestion import run_ingestion
+
+            def log_progress(message: str, current: int, total: int):
+                if current % 10 == 0 or current == total:
+                    logger.info(f"[{current}/{total}] {message}")
+
+            result = run_ingestion(
+                source_dir=settings.RAW_DOCS_DIR,
+                store=store,
+                chunk_size=settings.CHUNK_SIZE,
+                chunk_overlap=settings.CHUNK_OVERLAP,
+                min_chunk_size=settings.MIN_CHUNK_SIZE,
+                clear_existing=False,
+                progress_callback=log_progress
+            )
+
+            chunk_count = store.count()
+
+            if result["success"]:
+                logger.info("=" * 60)
+                logger.info(f"Ingestion complete!")
+                logger.info(f"  Files processed: {result['total_files']}")
+                logger.info(f"  Chunks created: {result['total_chunks']}")
+                if result.get('failed_files', 0) > 0:
+                    logger.warning(f"  Failed files: {result['failed_files']}")
+                logger.info("=" * 60)
+                status = "ready"
+                message = f"Ready - {chunk_count:,} chunks indexed from {result['total_files']} documents"
+            else:
+                logger.error(f"Ingestion failed: {result.get('error', 'Unknown error')}")
+                status = "setup_required"
+                message = f"Ingestion failed: {result.get('error', 'Unknown error')}"
+        else:
+            logger.warning("=" * 60)
+            logger.warning("Database is empty and no markdown files found!")
+            logger.warning(f"Expected markdown files in: {settings.RAW_DOCS_DIR}")
+            logger.warning("Please add STM32 documentation files to this directory.")
+            logger.warning("=" * 60)
+            status = "setup_required"
+            message = f"No documentation files found in {settings.RAW_DOCS_DIR}"
+    else:
+        logger.info(f"Ready - {chunk_count:,} chunks available")
+        status = "ready"
+        message = f"Ready - {chunk_count:,} chunks indexed"
+
+    # Create resources handler
+    resources_handler = DocumentationResources(store)
+
+    # Create the server context
+    context = ServerContext(
+        store=store,
+        resources=resources_handler,
+        status=status,
+        chunk_count=chunk_count,
+        message=message
+    )
+
+    logger.info("=" * 60)
+    logger.info(f"Server status: {status}")
+    logger.info(f"Mode: {settings.SERVER_MODE.value}")
+    logger.info("=" * 60)
+
+    # Yield the context - this makes it available via ctx.request_context.lifespan_context
+    yield context
+
+    # Cleanup on shutdown
+    logger.info("STM32 MCP Server shutting down...")
+
+
+# Initialize FastMCP server with lifespan
 mcp = FastMCP(
     name=settings.SERVER_NAME,
-    instructions=settings.SERVER_DESCRIPTION
+    instructions=settings.SERVER_DESCRIPTION,
+    lifespan=server_lifespan
 )
 
-# Lazy-loaded storage instance
-_store: STM32ChromaStore | None = None
 
-# Lazy-loaded resources handler
-_resources: DocumentationResources | None = None
+# ============================================================================
+# HELPER FUNCTIONS - Get store from context
+# ============================================================================
+
+def get_store_from_context(ctx: Context) -> STM32ChromaStore:
+    """Get the store from the request context."""
+    server_ctx: ServerContext = ctx.request_context.lifespan_context
+    return server_ctx.store
 
 
-def get_store() -> STM32ChromaStore:
+def get_context_status(ctx: Context) -> ServerContext:
+    """Get the full server context."""
+    return ctx.request_context.lifespan_context
+
+
+def check_database_ready(ctx: Context) -> tuple[bool, str]:
     """
-    Get or initialize the ChromaDB store.
-
-    Uses lazy loading to avoid initialization overhead until first use.
-    The store is cached globally for reuse across requests.
+    Check if the database is ready for queries.
 
     Returns:
-        STM32ChromaStore instance
+        Tuple of (is_ready, message)
     """
-    global _store
-    if _store is None:
-        logger.info(f"Initializing ChromaDB store at {settings.CHROMA_DB_PATH}")
-        _store = STM32ChromaStore(
-            persist_dir=settings.CHROMA_DB_PATH,
-            collection_name=settings.COLLECTION_NAME,
-            embedding_model=settings.EMBEDDING_MODEL
+    server_ctx = get_context_status(ctx)
+    if server_ctx.status != "ready":
+        return False, (
+            f"Database not ready: {server_ctx.message}\n\n"
+            "To set up the database:\n"
+            "1. Add STM32 markdown documentation files to the 'markdowns/' directory\n"
+            "2. Restart the MCP server to trigger auto-ingestion\n"
+            "3. Or run 'python scripts/ingest_docs.py' manually"
         )
-        logger.info(f"Store initialized with {_store.count()} chunks")
-    return _store
+    if server_ctx.chunk_count == 0:
+        return False, (
+            "Database is empty. No documentation has been indexed.\n\n"
+            "To populate the database:\n"
+            "1. Add STM32 markdown documentation files to the 'markdowns/' directory\n"
+            "2. Restart the MCP server to trigger auto-ingestion\n"
+            "3. Or run 'python scripts/ingest_docs.py' manually"
+        )
+    return True, ""
 
 
-def get_resources() -> DocumentationResources:
+# ============================================================================
+# STATUS AND HEALTH RESOURCES
+# ============================================================================
+
+@mcp.resource("stm32://status")
+def get_server_status(ctx: Context) -> str:
     """
-    Get or initialize the resources handler.
+    Get detailed server status including database state.
 
-    Uses lazy loading to avoid initialization overhead until first use.
-    The resources handler is cached globally for reuse across requests.
-
-    Returns:
-        DocumentationResources instance
+    Returns JSON with:
+    - status: "ready" or "setup_required"
+    - chunk_count: Number of indexed chunks
+    - message: Human-readable status message
+    - instructions: Setup instructions if needed
     """
-    global _resources
-    if _resources is None:
-        _resources = DocumentationResources(get_store())
-    return _resources
+    server_ctx = get_context_status(ctx)
+
+    status_data = {
+        "status": server_ctx.status,
+        "chunk_count": server_ctx.chunk_count,
+        "message": server_ctx.message,
+        "server": settings.SERVER_NAME,
+        "version": settings.SERVER_VERSION,
+        "mode": settings.SERVER_MODE.value
+    }
+
+    if server_ctx.status == "setup_required":
+        status_data["instructions"] = [
+            "1. Add STM32 markdown documentation files to the 'markdowns/' directory",
+            "2. Restart the MCP server to trigger auto-ingestion",
+            "3. Or run 'python scripts/ingest_docs.py' manually"
+        ]
+
+    return json.dumps(status_data, indent=2)
+
+
+@mcp.resource("stm32://health")
+def get_health_status(ctx: Context) -> str:
+    """
+    Get server health status for monitoring.
+
+    Simple health check endpoint that returns basic server info.
+    """
+    server_ctx = get_context_status(ctx)
+
+    return json.dumps({
+        "status": "healthy" if server_ctx.status == "ready" else "degraded",
+        "server": settings.SERVER_NAME,
+        "version": settings.SERVER_VERSION,
+        "mode": settings.SERVER_MODE.value,
+        "chunks_indexed": server_ctx.chunk_count,
+        "embedding_model": settings.EMBEDDING_MODEL,
+        "database_status": server_ctx.status
+    }, indent=2)
 
 
 # ============================================================================
@@ -118,6 +311,7 @@ def get_resources() -> DocumentationResources:
 
 @mcp.tool()
 def search_stm32_docs(
+    ctx: Context,
     query: str,
     num_results: int = 5,
     peripheral: str = "",
@@ -143,7 +337,12 @@ def search_stm32_docs(
         - search_stm32_docs("DMA configuration", peripheral="DMA")
         - search_stm32_docs("GPIO toggle example", require_code=True)
     """
-    store = get_store()
+    # Check database readiness
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+
+    store = get_store_from_context(ctx)
 
     # Parse peripheral filter
     periph_filter = None
@@ -195,6 +394,7 @@ def search_stm32_docs(
 
 @mcp.tool()
 def get_peripheral_docs(
+    ctx: Context,
     peripheral: str,
     topic: str = "",
     include_code: bool = True
@@ -218,7 +418,12 @@ def get_peripheral_docs(
         - get_peripheral_docs("GPIO", topic="interrupt")
         - get_peripheral_docs("DMA", topic="circular mode")
     """
-    store = get_store()
+    # Check database readiness
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+
+    store = get_store_from_context(ctx)
 
     # Validate peripheral
     try:
@@ -254,6 +459,7 @@ def get_peripheral_docs(
 
 @mcp.tool()
 def get_code_examples(
+    ctx: Context,
     topic: str,
     peripheral: str = "",
     num_examples: int = 3
@@ -277,7 +483,12 @@ def get_code_examples(
         - get_code_examples("PWM configuration", peripheral="TIM")
         - get_code_examples("ADC continuous mode")
     """
-    store = get_store()
+    # Check database readiness
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+
+    store = get_store_from_context(ctx)
 
     # Parse optional peripheral filter
     periph_filter = None
@@ -318,7 +529,7 @@ def get_code_examples(
 
 
 @mcp.tool()
-def get_register_info(register_name: str) -> str:
+def get_register_info(ctx: Context, register_name: str) -> str:
     """
     Get information about a specific STM32 register.
 
@@ -336,7 +547,12 @@ def get_register_info(register_name: str) -> str:
         - get_register_info("TIMx_CR1")
         - get_register_info("RCC_CFGR")
     """
-    store = get_store()
+    # Check database readiness
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+
+    store = get_store_from_context(ctx)
 
     # Search for register documentation
     results = store.get_register_info(register_name, n_results=5)
@@ -358,7 +574,7 @@ def get_register_info(register_name: str) -> str:
 
 
 @mcp.tool()
-def list_peripherals() -> str:
+def list_peripherals(ctx: Context) -> str:
     """
     List all available peripherals and their documentation coverage.
 
@@ -368,7 +584,12 @@ def list_peripherals() -> str:
     Returns:
         List of peripherals with chunk counts
     """
-    store = get_store()
+    # Check database readiness
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+
+    store = get_store_from_context(ctx)
 
     # Get peripheral distribution
     dist = store.get_peripheral_distribution()
@@ -394,7 +615,7 @@ def list_peripherals() -> str:
 
 
 @mcp.tool()
-def search_hal_function(function_name: str) -> str:
+def search_hal_function(ctx: Context, function_name: str) -> str:
     """
     Search for HAL/LL function documentation.
 
@@ -412,7 +633,12 @@ def search_hal_function(function_name: str) -> str:
         - search_hal_function("HAL_UART_Transmit_DMA")
         - search_hal_function("LL_TIM_SetCounter")
     """
-    store = get_store()
+    # Check database readiness
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+
+    store = get_store_from_context(ctx)
 
     # Search for the function
     results = store.search_hal_function(function_name, n_results=5)
@@ -446,7 +672,7 @@ def search_hal_function(function_name: str) -> str:
 # ============================================================================
 
 @mcp.tool()
-def lookup_hal_function(function_name: str) -> str:
+def lookup_hal_function(ctx: Context, function_name: str) -> str:
     """
     Look up documentation for a specific HAL/LL function.
 
@@ -465,11 +691,15 @@ def lookup_hal_function(function_name: str) -> str:
         - lookup_hal_function("LL_GPIO_SetPinMode")
         - lookup_hal_function("__HAL_RCC_GPIOA_CLK_ENABLE")
     """
-    return _search_hal_function_impl(get_store(), function_name)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return _search_hal_function_impl(get_store_from_context(ctx), function_name)
 
 
 @mcp.tool()
 def troubleshoot_error(
+    ctx: Context,
     error_description: str,
     peripheral: str = ""
 ) -> str:
@@ -492,11 +722,15 @@ def troubleshoot_error(
         - troubleshoot_error("HardFault after DMA transfer")
         - troubleshoot_error("SPI communication fails intermittently")
     """
-    return search_error_solution(get_store(), error_description, peripheral or None)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return search_error_solution(get_store_from_context(ctx), error_description, peripheral or None)
 
 
 @mcp.tool()
 def get_init_sequence(
+    ctx: Context,
     peripheral: str,
     use_case: str = ""
 ) -> str:
@@ -519,11 +753,15 @@ def get_init_sequence(
         - get_init_sequence("ADC", use_case="continuous conversion")
         - get_init_sequence("TIM", use_case="PWM output")
     """
-    return search_initialization_sequence(get_store(), peripheral, use_case)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return search_initialization_sequence(get_store_from_context(ctx), peripheral, use_case)
 
 
 @mcp.tool()
 def get_clock_config(
+    ctx: Context,
     target_frequency: str = "",
     clock_source: str = ""
 ) -> str:
@@ -546,11 +784,15 @@ def get_clock_config(
         - get_clock_config(clock_source="PLL")
         - get_clock_config("84MHz", "HSI")
     """
-    return search_clock_configuration(get_store(), target_frequency, clock_source)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return search_clock_configuration(get_store_from_context(ctx), target_frequency, clock_source)
 
 
 @mcp.tool()
 def compare_peripheral_options(
+    ctx: Context,
     peripheral1: str,
     peripheral2: str,
     aspect: str = ""
@@ -575,11 +817,15 @@ def compare_peripheral_options(
         - compare_peripheral_options("DMA", "BDMA")
         - compare_peripheral_options("ADC", "DAC", aspect="resolution")
     """
-    return compare_peripherals(get_store(), peripheral1, peripheral2, aspect)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return compare_peripherals(get_store_from_context(ctx), peripheral1, peripheral2, aspect)
 
 
 @mcp.tool()
 def get_migration_guide(
+    ctx: Context,
     from_family: str,
     to_family: str,
     peripheral: str = ""
@@ -603,11 +849,14 @@ def get_migration_guide(
         - get_migration_guide("STM32F7", "STM32H7", peripheral="DMA")
         - get_migration_guide("STM32F1", "STM32G4", peripheral="ADC")
     """
-    return search_migration_info(get_store(), from_family, to_family, peripheral or None)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return search_migration_info(get_store_from_context(ctx), from_family, to_family, peripheral or None)
 
 
 @mcp.tool()
-def get_electrical_specifications(topic: str) -> str:
+def get_electrical_specifications(ctx: Context, topic: str) -> str:
     """
     Search for electrical specifications.
 
@@ -626,11 +875,15 @@ def get_electrical_specifications(topic: str) -> str:
         - get_electrical_specifications("power consumption sleep mode")
         - get_electrical_specifications("operating voltage range")
     """
-    return search_electrical_specs(get_store(), topic)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return search_electrical_specs(get_store_from_context(ctx), topic)
 
 
 @mcp.tool()
 def get_timing_specifications(
+    ctx: Context,
     peripheral: str,
     timing_type: str = ""
 ) -> str:
@@ -653,7 +906,10 @@ def get_timing_specifications(
         - get_timing_specifications("UART", "baud rate")
         - get_timing_specifications("SDMMC", "latency")
     """
-    return search_timing_info(get_store(), peripheral, timing_type)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return search_timing_info(get_store_from_context(ctx), peripheral, timing_type)
 
 
 # ============================================================================
@@ -662,6 +918,7 @@ def get_timing_specifications(
 
 @mcp.tool()
 def get_interrupt_code(
+    ctx: Context,
     peripheral: str,
     interrupt_type: str = ""
 ) -> str:
@@ -684,11 +941,15 @@ def get_interrupt_code(
         - get_interrupt_code("EXTI", interrupt_type="rising edge")
         - get_interrupt_code("ADC", interrupt_type="conversion complete")
     """
-    return get_interrupt_example(get_store(), peripheral, interrupt_type)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return get_interrupt_example(get_store_from_context(ctx), peripheral, interrupt_type)
 
 
 @mcp.tool()
 def get_dma_code(
+    ctx: Context,
     peripheral: str,
     direction: str = ""
 ) -> str:
@@ -711,11 +972,14 @@ def get_dma_code(
         - get_dma_code("ADC", direction="RX")
         - get_dma_code("I2C", direction="both")
     """
-    return get_dma_example(get_store(), peripheral, direction)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return get_dma_example(get_store_from_context(ctx), peripheral, direction)
 
 
 @mcp.tool()
-def get_low_power_code(mode: str = "") -> str:
+def get_low_power_code(ctx: Context, mode: str = "") -> str:
     """
     Get low power mode examples.
 
@@ -734,11 +998,15 @@ def get_low_power_code(mode: str = "") -> str:
         - get_low_power_code("Stop")
         - get_low_power_code("Standby")
     """
-    return get_low_power_example(get_store(), mode)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return get_low_power_example(get_store_from_context(ctx), mode)
 
 
 @mcp.tool()
 def get_callback_code(
+    ctx: Context,
     peripheral: str,
     callback_type: str = ""
 ) -> str:
@@ -761,11 +1029,15 @@ def get_callback_code(
         - get_callback_code("I2C", callback_type="Error")
         - get_callback_code("DMA", callback_type="HalfCplt")
     """
-    return get_callback_example(get_store(), peripheral, callback_type)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return get_callback_example(get_store_from_context(ctx), peripheral, callback_type)
 
 
 @mcp.tool()
 def get_init_template(
+    ctx: Context,
     peripheral: str,
     mode: str = ""
 ) -> str:
@@ -788,99 +1060,97 @@ def get_init_template(
         - get_init_template("TIM", mode="PWM")
         - get_init_template("UART", mode="DMA")
     """
-    return get_peripheral_init_template(get_store(), peripheral, mode)
+    ready, error_msg = check_database_ready(ctx)
+    if not ready:
+        return error_msg
+    return get_peripheral_init_template(get_store_from_context(ctx), peripheral, mode)
 
 
 # ============================================================================
-# RESOURCES - Direct documentation access via URIs
+# ADDITIONAL RESOURCES - Direct documentation access via URIs
 # ============================================================================
 
 @mcp.resource("stm32://stats")
-def get_documentation_stats() -> str:
+def get_documentation_stats(ctx: Context) -> str:
     """Get statistics about the documentation database."""
-    return get_resources().get_stats()
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_stats()
 
 
 @mcp.resource("stm32://peripherals")
-def list_all_peripherals() -> str:
+def list_all_peripherals(ctx: Context) -> str:
     """List all documented peripherals."""
-    return list_peripherals()
+    return list_peripherals(ctx)
 
 
 @mcp.resource("stm32://peripherals/{peripheral}")
-def get_peripheral_overview(peripheral: str) -> str:
+def get_peripheral_overview(ctx: Context, peripheral: str) -> str:
     """Get overview documentation for a specific peripheral."""
-    return get_resources().get_peripheral_overview(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_peripheral_overview(peripheral)
 
 
 @mcp.resource("stm32://sources")
-def list_doc_sources() -> str:
+def list_doc_sources(ctx: Context) -> str:
     """List all documentation source files."""
-    return get_resources().list_sources()
-
-
-@mcp.resource("stm32://health")
-def get_health_status() -> str:
-    """Get server health status."""
-    import json
-    store = get_store()
-
-    return json.dumps({
-        "status": "healthy",
-        "server": settings.SERVER_NAME,
-        "version": settings.SERVER_VERSION,
-        "mode": settings.SERVER_MODE.value,
-        "chunks_indexed": store.count(),
-        "embedding_model": settings.EMBEDDING_MODEL
-    }, indent=2)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.list_sources()
 
 
 @mcp.resource("stm32://peripherals/{peripheral}/overview")
-def peripheral_overview(peripheral: str) -> str:
+def peripheral_overview(ctx: Context, peripheral: str) -> str:
     """Get comprehensive peripheral overview documentation."""
-    return get_resources().get_peripheral_overview(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_peripheral_overview(peripheral)
 
 
 @mcp.resource("stm32://peripherals/{peripheral}/registers")
-def peripheral_registers(peripheral: str) -> str:
+def peripheral_registers(ctx: Context, peripheral: str) -> str:
     """Get peripheral register documentation."""
-    return get_resources().get_peripheral_registers(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_peripheral_registers(peripheral)
 
 
 @mcp.resource("stm32://peripherals/{peripheral}/examples")
-def peripheral_examples(peripheral: str) -> str:
+def peripheral_examples(ctx: Context, peripheral: str) -> str:
     """Get peripheral code examples."""
-    return get_resources().get_peripheral_examples(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_peripheral_examples(peripheral)
 
 
 @mcp.resource("stm32://peripherals/{peripheral}/interrupts")
-def peripheral_interrupts(peripheral: str) -> str:
+def peripheral_interrupts(ctx: Context, peripheral: str) -> str:
     """Get peripheral interrupt documentation."""
-    return get_resources().get_peripheral_interrupts(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_peripheral_interrupts(peripheral)
 
 
 @mcp.resource("stm32://peripherals/{peripheral}/dma")
-def peripheral_dma(peripheral: str) -> str:
+def peripheral_dma(ctx: Context, peripheral: str) -> str:
     """Get peripheral DMA configuration."""
-    return get_resources().get_peripheral_dma(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_peripheral_dma(peripheral)
 
 
 @mcp.resource("stm32://hal-functions")
-def list_hal_functions() -> str:
+def list_hal_functions(ctx: Context) -> str:
     """List all HAL functions."""
-    return get_resources().get_hal_functions_list()
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_hal_functions_list()
 
 
 @mcp.resource("stm32://hal-functions/{peripheral}")
-def list_peripheral_hal_functions(peripheral: str) -> str:
+def list_peripheral_hal_functions(ctx: Context, peripheral: str) -> str:
     """List HAL functions for a specific peripheral."""
-    return get_resources().get_hal_functions_list(peripheral)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_hal_functions_list(peripheral)
 
 
 @mcp.resource("stm32://documents/{doc_type}")
-def get_documents_by_type(doc_type: str) -> str:
+def get_documents_by_type(ctx: Context, doc_type: str) -> str:
     """Get documents of a specific type."""
-    return get_resources().get_document_by_type(doc_type)
+    server_ctx = get_context_status(ctx)
+    return server_ctx.resources.get_document_by_type(doc_type)
 
 
 # ============================================================================
@@ -1012,12 +1282,10 @@ def run_network():
 
     async def health_check(request):
         """Health check endpoint for monitoring."""
-        store = get_store()
         return JSONResponse({
             "status": "healthy",
             "server": settings.SERVER_NAME,
-            "version": settings.SERVER_VERSION,
-            "chunks_indexed": store.count()
+            "version": settings.SERVER_VERSION
         })
 
     async def server_info(request):
