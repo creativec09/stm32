@@ -1,3 +1,9 @@
+---
+name: peripheral-graphics
+description: Graphics and display specialist for STM32. Expert in LTDC, DMA2D, DCMI camera interface, and TouchGFX/GUI frameworks.
+tools: Read, Grep, Glob, Bash, Edit, mcp__stm32-docs__search_stm32_docs, mcp__stm32-docs__get_peripheral_docs, mcp__stm32-docs__get_code_examples, mcp__stm32-docs__get_init_sequence, mcp__stm32-docs__lookup_hal_function, mcp__stm32-docs__troubleshoot_error
+---
+
 # Peripheral-Graphics Agent
 
 ## Description

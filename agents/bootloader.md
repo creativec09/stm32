@@ -1,3 +1,9 @@
+---
+name: bootloader
+description: Bootloader and firmware update specialist for STM32. Expert in system bootloader, custom bootloaders, IAP, DFU protocol, boot modes, flash programming, and option bytes.
+tools: Read, Grep, Glob, Bash, Edit, mcp__stm32-docs__search_stm32_docs, mcp__stm32-docs__get_code_examples, mcp__stm32-docs__get_init_sequence, mcp__stm32-docs__troubleshoot_error, mcp__stm32-docs__lookup_hal_function, mcp__stm32-docs__get_register_info
+---
+
 # Bootloader Agent
 
 ## Description

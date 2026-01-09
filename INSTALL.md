@@ -5,10 +5,9 @@ This guide provides detailed installation instructions for the STM32 MCP Documen
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Private Distribution via uvx (Recommended)](#private-distribution-via-uvx-recommended)
-- [Quick Install (Clone-and-Go)](#quick-install-clone-and-go)
-- [What Gets Installed](#what-gets-installed)
+- [Plugin Installation (Recommended)](#plugin-installation-recommended)
 - [Alternative Installation Methods](#alternative-installation-methods)
+- [What Gets Installed](#what-gets-installed)
 - [Post-Installation Setup](#post-installation-setup)
 - [Claude Code Integration](#claude-code-integration)
 - [Network Mode (Tailscale)](#network-mode-tailscale)
@@ -60,128 +59,35 @@ brew install python@3.11 git
 
 ---
 
-## Private Distribution via uvx (Recommended)
+## Plugin Installation (Recommended)
 
-The fastest way to use this MCP server from a private repository is via `uvx`. This method:
-- Automatically installs dependencies
-- No need to clone the repository
-- Works with version tags for reproducible installations
-- Caches the package for fast subsequent launches
-- **Auto-installs 16 STM32 agents** to `~/.claude/agents/` on first run
-- **Auto-indexes documentation** on first run (5-10 min initial setup)
+The easiest way to install is using Claude Code's plugin system. This method:
+- Automatically configures the MCP server
+- Installs all 16 specialized agents
+- Sets up 4 slash commands
+- No manual configuration required
 
-### Prerequisites
+### Install the Plugin
 
-1. **Install uv** (a fast Python package installer and runner):
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
+In Claude Code, run:
 
-2. **GitHub Personal Access Token (PAT)** with `repo` scope:
-   - Go to GitHub Settings > Developer settings > Personal access tokens
-   - Generate a new token with `repo` scope
-   - Save the token securely
-
-### Add to Claude Code
-
-```bash
-# Replace TOKEN with your GitHub Personal Access Token
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+/plugin install github:creativec09/stm32-agents
 ```
 
-### Using a Specific Version Tag
+### What Gets Installed
 
-For production use, pin to a specific version:
+| Component | Description |
+|-----------|-------------|
+| MCP Server | Auto-configured via `mcp-config.json` |
+| 16 Agents | Specialized STM32 development agents |
+| 4 Commands | `/stm32`, `/stm32-hal`, `/stm32-init`, `/stm32-debug` |
 
-```bash
-# Install from a tagged release (recommended for stability)
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.1.0 stm32-mcp-docs
-```
+### First Run
 
-Available tags:
-- `v1.0.0` - Initial stable release
-
-### Environment Variables
-
-If you need to pass environment variables to the MCP server, add them to your Claude config manually:
-
-Edit `~/.claude.json`:
-```json
-{
-  "mcpServers": {
-    "stm32-docs": {
-      "command": "uvx",
-      "args": ["--from", "git+https://TOKEN@github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"],
-      "env": {
-        "STM32_SERVER_MODE": "local",
-        "STM32_LOG_LEVEL": "INFO"
-      }
-    }
-  }
-}
-```
-
-### Verify Installation
-
-After adding to Claude Code:
-
-```bash
-# List configured MCP servers
-claude mcp list
-
-# Restart Claude Code, then test with:
-/stm32 How do I configure UART with DMA?
-```
-
-### Updating
-
-To update to a newer version:
-
-```bash
-# Remove old configuration
-claude mcp remove stm32-docs --scope user
-
-# Add with new version
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git@v1.1.0 stm32-mcp-docs
-```
-
----
-
-## Quick Install (Clone-and-Go)
-
-The MCP server features **automatic database building** on first run. Just install and start using - the documentation index builds automatically from the included markdown files!
-
-### Clone-and-Go Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/creativec09/stm32-agents.git
-cd stm32-agents
-
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows PowerShell
-
-# Install the package
-pip install -e .
-
-# Register with Claude Code (recommended method)
-claude mcp add stm32-docs --scope user -- python -m mcp_server
-
-# (Optional) Run complete setup for agents and slash commands
-stm32-setup
-```
-
-The `stm32-setup` command automatically:
-- Uses `claude mcp add` when available (with manual fallback)
-- Installs all agents to `~/.claude/agents/`
-- Installs slash commands to `~/.claude/commands/`
-- Verifies the installation
-
-**Auto-Setup on First Run**: On first use, the MCP server automatically:
-- Installs 16 STM32 agents to `~/.claude/agents/`
+On first use, the MCP server automatically:
 - Ingests the bundled STM32 documentation (takes 5-10 minutes)
+- Builds the ChromaDB vector database
 
 You will see progress logs like:
 
@@ -195,41 +101,83 @@ Ingestion complete!
 Ready - 13,815 chunks indexed
 ```
 
-### Development Install (with Re-ingestion)
+### Verify Installation
 
-For development or to force rebuild the vector database:
+After installation, restart Claude Code and test:
+
+```
+/stm32 How do I configure UART with DMA?
+```
+
+---
+
+## Alternative Installation Methods
+
+### Option A: Manual MCP Installation via uvx
+
+If you prefer not to use the plugin system:
 
 ```bash
-# 1. Clone the repository
+# Install uv first
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add MCP server to Claude Code
+claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+Note: For private repositories, use a GitHub Personal Access Token:
+```bash
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+### Option B: pip Installation
+
+```bash
+# Install the package
+pip install git+https://github.com/creativec09/stm32-agents.git
+
+# Register with Claude Code
+claude mcp add stm32-docs --scope user -- python -m mcp_server
+```
+
+### Option C: Development Installation
+
+For contributors and customization:
+
+```bash
+# Clone the repository
 git clone https://github.com/creativec09/stm32-agents.git
 cd stm32-agents
 
-# 2. Create and activate virtual environment
+# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows PowerShell
 
-# 3. Install the package
-pip install -e .
+# Install with development dependencies
+pip install -e ".[dev]"
 
-# 4. (Optional) Force re-ingestion to rebuild database
-stm32-setup --ingest --clear
-
-# Or delete the database to trigger auto-ingestion on next start
-rm -rf data/chroma_db/
+# Register with Claude Code
+claude mcp add stm32-docs --scope user -- python -m mcp_server
 ```
 
-### Verify It Works
+### Manual MCP Configuration
 
-```bash
-# List configured MCP servers
-claude mcp list
+If the `claude` CLI is not available, add to `~/.claude.json`:
 
-# Check installation status
-stm32-setup --status
-
-# Or restart Claude Code and try:
-/stm32 How do I configure UART with DMA?
+```json
+{
+  "mcpServers": {
+    "stm32-docs": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"],
+      "env": {
+        "STM32_SERVER_MODE": "local",
+        "STM32_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
 ```
 
 ---
@@ -238,13 +186,12 @@ stm32-setup --status
 
 | Component | Location | Installed By |
 |-----------|----------|--------------|
-| Python package | Site-packages or editable | `pip install` |
-| MCP server config | User config (via `claude mcp add`) | `claude mcp add` or `stm32-setup` |
-| Project MCP config | `.mcp.json` (project root) | Already in repository |
-| Agent definitions | `~/.claude/agents/*.md` | **Auto-installed on first MCP server run** |
-| Slash commands | `~/.claude/commands/*.md` | `stm32-setup` |
-| Vector database | `data/chroma_db/` | **Auto-built on first MCP server run** |
-| CLI commands | `stm32-*` | `pip install` |
+| Plugin manifest | `.claude-plugin/plugin.json` | Plugin system |
+| Agent definitions | `agents/*.md` | Plugin system |
+| Slash commands | `commands/*.md` | Plugin system |
+| MCP configuration | `mcp-config.json` | Plugin system |
+| Vector database | `data/chroma_db/` | Auto-built on first run |
+| CLI commands | `stm32-*` | pip install |
 
 ### CLI Commands Available After Install
 
@@ -252,94 +199,10 @@ stm32-setup --status
 |---------|-------------|
 | `stm32-setup` | Complete setup wizard |
 | `stm32-setup --status` | Show installation status |
-| `stm32-setup --verify` | Verify installation |
 | `stm32-server` | Start the MCP server |
-| `stm32-ingest` | Ingest documentation (auto-runs on first start if needed) |
+| `stm32-ingest` | Ingest documentation (auto-runs on first start) |
 | `stm32-search` | Search from command line |
-| `stm32-validate` | Full system validation |
-
----
-
-## Alternative Installation Methods
-
-### Option A: Selective Setup
-
-Run only specific setup steps:
-
-```bash
-# Only configure MCP server
-stm32-setup --mcp-only
-
-# Only install agents
-stm32-setup --agents
-
-# Only ingest documentation
-stm32-setup --ingest
-
-# Re-ingest (clear and rebuild)
-stm32-setup --ingest --clear
-```
-
-### Option B: Re-build Database from Source
-
-The pre-built database is included via Git LFS. To rebuild from scratch:
-
-```bash
-# Clone and install
-git clone https://github.com/creativec09/stm32-agents.git
-cd stm32-agents
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
-
-# Force re-ingestion (rebuilds database from markdown files)
-stm32-setup --ingest --clear
-
-# Or use the ingest script directly
-python scripts/ingest_docs.py --clear
-```
-
-### Option C: Install from GitHub (Without Clone)
-
-```bash
-# Create project directory
-mkdir stm32-docs-server && cd stm32-docs-server
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install from GitHub
-pip install git+https://github.com/creativec09/stm32-agents.git
-
-# Clone to get documentation files
-git clone https://github.com/creativec09/stm32-agents.git source
-
-# Set project directory for setup
-export STM32_PROJECT_DIR=$(pwd)/source
-
-# Run setup
-stm32-setup
-```
-
-### Option D: Development Installation
-
-For contributors and customization:
-
-```bash
-git clone https://github.com/creativec09/stm32-agents.git
-cd stm32-agents
-python -m venv .venv
-source .venv/bin/activate
-
-# Install with development dependencies
-pip install -e ".[dev]"
-
-# Install pre-commit hooks
-pre-commit install
-
-# Run setup
-stm32-setup
-```
+| `stm32-uninstall` | Clean up database |
 
 ---
 
@@ -347,62 +210,22 @@ stm32-setup
 
 ### Automatic Setup (Default)
 
-The `stm32-setup` command handles everything. Just run it after `pip install`.
+The plugin system handles everything automatically. Just install and use.
 
-### Manual Configuration (If Needed)
+### Manual Agent Installation (Alternative Methods Only)
 
-If you prefer manual control, here's what `stm32-setup` does:
-
-#### 1. MCP Configuration
-
-**Recommended: Use Claude CLI**
-```bash
-claude mcp add stm32-docs --scope user -- python -m mcp_server
-```
-
-**Alternative: Project-level config**
-The repository includes a `.mcp.json` file at the project root that Claude Code automatically detects when you open the project directory:
-```json
-{
-  "mcpServers": {
-    "stm32-docs": {
-      "command": "python",
-      "args": ["-m", "mcp_server.server"],
-      "env": {
-        "STM32_SERVER_MODE": "local",
-        "STM32_LOG_LEVEL": "INFO"
-      }
-    }
-  }
-}
-```
-
-**Fallback: Manual user config**
-If the Claude CLI is not available, add to `~/.claude.json`:
-```json
-{
-  "mcpServers": {
-    "stm32-docs": {
-      "command": "python",
-      "args": ["-m", "mcp_server.server"],
-      "env": {
-        "STM32_SERVER_MODE": "local",
-        "STM32_LOG_LEVEL": "INFO"
-      }
-    }
-  }
-}
-```
-
-#### 2. Agent Installation
+If you installed via uvx or pip without the plugin:
 
 ```bash
+# Copy agents and commands manually (if needed)
 mkdir -p ~/.claude/agents ~/.claude/commands
-cp .claude/agents/*.md ~/.claude/agents/
-cp .claude/commands/*.md ~/.claude/commands/
+cp agents/*.md ~/.claude/agents/
+cp commands/*.md ~/.claude/commands/
 ```
 
-#### 3. Document Ingestion
+### Document Ingestion
+
+Ingestion happens automatically on first run. To force re-ingestion:
 
 ```bash
 python scripts/ingest_docs.py --clear
@@ -416,7 +239,7 @@ python scripts/ingest_docs.py --clear
 
 Local mode uses stdio transport - Claude Code launches the server directly.
 
-After running `claude mcp add stm32-docs --scope user -- python -m mcp_server`, restart Claude Code and test:
+After installation, restart Claude Code and test:
 
 ```
 /stm32 How do I configure UART?
@@ -494,19 +317,6 @@ stm32-setup --status
 stm32-setup --verify
 ```
 
-### Detailed Validation
-
-```bash
-# Full system validation
-stm32-validate
-
-# Verify MCP specifically
-stm32-verify
-
-# Test search quality
-stm32-test-retrieval
-```
-
 ### Manual Testing
 
 ```bash
@@ -534,7 +344,15 @@ for r in results:
 
 ## Upgrading
 
-### From Git
+### Plugin Upgrade
+
+```bash
+# Uninstall and reinstall the plugin
+/plugin uninstall stm32-agents
+/plugin install github:creativec09/stm32-agents
+```
+
+### Manual Upgrade (Alternative Methods)
 
 ```bash
 cd stm32-agents
@@ -542,71 +360,46 @@ git pull origin main
 source .venv/bin/activate
 pip install -e . --upgrade
 
-# Re-run setup to update agents and re-ingest if needed
-stm32-setup --force
-```
-
-### From pip
-
-```bash
-pip install --upgrade git+https://github.com/creativec09/stm32-agents.git
-stm32-setup --force
+# Re-ingest if needed
+stm32-setup --ingest --clear
 ```
 
 ### Update Database Only
 
 ```bash
 # Re-ingest documentation
-stm32-setup --ingest --clear
-
-# Or download latest pre-built
-python scripts/download_db.py --force
+python scripts/ingest_docs.py --clear
 ```
 
 ---
 
 ## Uninstallation
 
-### Using Claude CLI (Recommended)
+### Using Plugin System (Recommended)
+
+If you installed via plugin:
 
 ```bash
-# Remove the MCP server configuration
-claude mcp remove stm32-docs --scope user
+# Remove the plugin (removes agents, commands, MCP config)
+/plugin uninstall stm32-agents
 
-# Then uninstall the Python package
-pip uninstall stm32-mcp-docs
+# Clean up database (optional)
+stm32-uninstall
 ```
 
-### Using the Uninstall Command
+### Manual Uninstall
+
+If you installed via uvx or pip:
 
 ```bash
-# Remove MCP config, agents, and commands from ~/.claude
-stm32-setup --uninstall
-
-# Then uninstall the Python package
-pip uninstall stm32-mcp-docs
-```
-
-### Manual Removal
-
-```bash
-# Remove from MCP configuration using Claude CLI
+# Remove MCP configuration
 claude mcp remove stm32-docs --scope user
 
-# Or manually edit ~/.claude.json and remove "stm32-docs" entry
+# Clean up database
+stm32-uninstall
 
-# Remove agents
-rm ~/.claude/agents/{router,firmware,power,debug,safety,bootloader,security}*.md
-rm ~/.claude/agents/{peripheral,hardware,triage}*.md
-
-# Remove commands
-rm ~/.claude/commands/stm32*.md
-
-# Uninstall package
+# Uninstall Python package
 pip uninstall stm32-mcp-docs
-
-# Remove project directory
-rm -rf /path/to/stm32-agents
 ```
 
 ### Clean Data Only
@@ -623,16 +416,14 @@ rm -rf logs/*.log
 
 ## Troubleshooting Installation
 
-### "stm32-setup: command not found"
-
-The package isn't installed or not in PATH:
+### Plugin Installation Fails
 
 ```bash
-# Ensure virtual environment is active
-source .venv/bin/activate
+# Check Claude Code CLI is available
+claude --version
 
-# Reinstall
-pip install -e .
+# Check network connectivity
+curl https://github.com/creativec09/stm32-agents
 ```
 
 ### "No markdown files found"
@@ -643,21 +434,19 @@ The documentation files are missing or not bundled correctly:
 # Check if markdowns are bundled in the package
 ls mcp_server/markdowns/
 
-# If missing, reinstall from the git repository to get bundled docs:
-uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
-# Or clone and install in editable mode:
-git clone https://github.com/creativec09/stm32-agents.git
-cd stm32-agents && pip install -e .
+# If missing, reinstall from the git repository
+/plugin uninstall stm32-agents
+/plugin install github:creativec09/stm32-agents
 ```
 
 ### MCP Server Not Connecting
 
 1. Check configuration:
    ```bash
-   stm32-setup --status
+   claude mcp list
    ```
 
-2. Verify paths in `~/.claude.json` are correct (MCP configs are in this file)
+2. Verify paths in `~/.claude.json` are correct
 
 3. Test server directly:
    ```bash

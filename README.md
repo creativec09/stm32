@@ -8,37 +8,44 @@ An MCP (Model Context Protocol) server that provides semantic search over STM32 
 
 ## Features
 
-- **One-Command Install**: Install via `uvx` from private GitHub repository
-- **Auto-Setup**: Agents and vector database auto-install on first run
+- **One-Command Install**: Install as a Claude Code plugin with one command
+- **Auto-Setup**: MCP server, agents, and commands auto-configured on install
 - **Semantic Search**: Find relevant documentation using natural language queries
 - **Peripheral-Specific Search**: Filter results by STM32 peripheral (GPIO, UART, SPI, etc.)
 - **Code Examples**: Retrieve working code examples for any topic
 - **HAL Function Lookup**: Get documentation for specific STM32 HAL/LL library functions
 - **16 Specialized Agents**: Domain-specific agents for firmware, debugging, power, security, and more
+- **4 Slash Commands**: Quick access via `/stm32`, `/stm32-hal`, `/stm32-init`, `/stm32-debug`
 - **No Hardcoded Paths**: Fully portable installation
 
 ## Quick Start
 
-### One-Command Installation
+### Plugin Installation (Recommended)
 
 ```bash
-# Install the MCP server (auto-installs agents + docs on first run)
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+# Install the STM32 plugin
+/plugin install github:creativec09/stm32-agents
 ```
 
-Replace `TOKEN` with your GitHub Personal Access Token (requires `repo` scope for private repository).
+This single command installs:
+- **MCP Server**: Auto-configured via `mcp-config.json`
+- **16 Agents**: Available immediately for specialized STM32 assistance
+- **4 Slash Commands**: `/stm32`, `/stm32-hal`, `/stm32-init`, `/stm32-debug`
 
-### What Happens on First Run
+### Alternative: Manual MCP Installation
 
-1. **16 STM32 agents** are installed to `~/.claude/agents/`
-2. **Vector database** (13,815 chunks) is built from 80 bundled STM32 documents
-3. **Marker files** prevent re-installation on subsequent runs
+If you prefer not to use the plugin system, you can install just the MCP server:
 
-First run takes 5-10 minutes. Subsequent starts are instant.
+```bash
+# Install the MCP server via uvx
+claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
+```
+
+Note: This method requires a GitHub Personal Access Token with `repo` scope for private repositories.
 
 ### Start Using
 
-Restart Claude Code, then use slash commands:
+After installation, restart Claude Code and use slash commands:
 
 ```
 /stm32 How do I configure UART with DMA?
@@ -73,20 +80,23 @@ Or ask naturally:
 - Python 3.11 or higher
 - [uv](https://docs.astral.sh/uv/) - Install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - Claude Code CLI
-- GitHub Personal Access Token (for private repository)
 
-### Method 1: uvx Installation (Recommended)
+### Method 1: Plugin Installation (Recommended)
 
 ```bash
-# One command installs everything
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+/plugin install github:creativec09/stm32-agents
 ```
 
-### Method 2: pip Installation
+This installs everything automatically:
+- MCP server configuration
+- 16 specialized agents
+- 4 slash commands
+
+### Method 2: Manual MCP + pip Installation
 
 ```bash
 # Install the package
-pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
+pip install git+https://github.com/creativec09/stm32-agents.git
 
 # Register with Claude Code
 claude mcp add stm32-docs --scope user -- python -m mcp_server
@@ -109,21 +119,6 @@ pip install -e ".[dev]"
 
 # Register with Claude Code
 claude mcp add stm32-docs --scope user -- python -m mcp_server
-```
-
-### Manual MCP Configuration
-
-If the `claude` CLI is not available, add to `~/.claude.json`:
-
-```json
-{
-  "mcpServers": {
-    "stm32-docs": {
-      "command": "uvx",
-      "args": ["--from", "git+https://TOKEN@github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"]
-    }
-  }
-}
 ```
 
 ## MCP Tools
@@ -160,7 +155,7 @@ The server provides 15+ tools for STM32 documentation:
 
 ## Specialized Agents
 
-16 domain-specific agents are auto-installed to `~/.claude/agents/`:
+16 domain-specific agents are included in the plugin:
 
 | Agent | Domain | Key Topics |
 |-------|--------|------------|
@@ -233,20 +228,22 @@ STM32_LOG_LEVEL=INFO
 
 ```
 stm32-agents/
+├── .claude-plugin/          # Plugin manifest
+│   └── plugin.json          # Plugin configuration
+├── agents/                  # Agent definitions (16 agents)
+├── commands/                # Slash command definitions
+├── mcp-config.json          # MCP server configuration
 ├── mcp_server/              # MCP server implementation
 │   ├── server.py            # Main server with tools/resources
 │   ├── __main__.py          # Module entry point
 │   ├── config.py            # Configuration management
 │   ├── markdowns/           # Bundled STM32 documentation (80 files)
-│   └── agents/              # Bundled agent definitions (16 agents)
+│   └── agents/              # Bundled agent definitions
 ├── pipeline/                # Document processing pipeline
 ├── storage/                 # Vector storage layer
 ├── scripts/                 # CLI utilities
 ├── tests/                   # Test suite
-├── docs/                    # Comprehensive documentation
-└── .claude/                 # Claude Code configuration
-    ├── agents/              # Specialized agent definitions
-    └── commands/            # Slash command definitions
+└── docs/                    # Comprehensive documentation
 ```
 
 ## Development
@@ -331,37 +328,36 @@ For more troubleshooting help, see [docs/GETTING_STARTED.md](docs/GETTING_STARTE
 
 ## Uninstall
 
-To completely remove the STM32 MCP server and all its components:
+### Using Plugin System (Recommended)
+
+If you installed via plugin:
+
+```bash
+# Remove the plugin (removes agents, commands, MCP config)
+/plugin uninstall stm32-agents
+
+# Clean up database (optional)
+stm32-uninstall
+```
+
+### Manual Uninstall
+
+If you installed manually:
 
 ```bash
 # Step 1: Remove MCP server configuration
 claude mcp remove stm32-docs --scope user
 
-# Step 2: Clean up agents, commands, and database
+# Step 2: Clean up database
 stm32-uninstall
 ```
-
-The `stm32-uninstall` command removes:
-- 16 STM32 agents from `~/.claude/agents/`
-- 4 slash commands from `~/.claude/commands/`
-- Marker file `~/.claude/.stm32-agents-installed`
-- ChromaDB vector database
 
 ### Uninstall Options
 
 ```bash
 stm32-uninstall --dry-run   # Preview what will be removed
 stm32-uninstall --yes       # Skip confirmation prompt
-stm32-uninstall --keep-db   # Keep database, only remove agents/commands
 ```
-
-### Why Manual Cleanup is Required
-
-The MCP protocol does not support uninstall hooks. When you run `claude mcp remove`, only the MCP configuration is removed. Installed agents, commands, and databases are NOT automatically cleaned up.
-
-This is a known limitation documented in:
-- [anthropics/claude-code#11240](https://github.com/anthropics/claude-code/issues/11240) - Plugin Lifecycle Hooks
-- [anthropics/claude-code#9394](https://github.com/anthropics/claude-code/issues/9394) - postInstall/postUninstall hooks
 
 ## License
 

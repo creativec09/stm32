@@ -1,0 +1,6 @@
+{
+  "stm32-docs": {
+    "command": "uvx",
+    "args": ["--from", "git+https://github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"]
+  }
+}

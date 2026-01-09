@@ -1,3 +1,9 @@
+---
+name: router
+description: Primary entry point for all STM32 queries. Classifies user intent, extracts domain-specific signals, and routes to appropriate specialist agents.
+tools: Read, Grep, Glob, Bash, mcp__stm32-docs__search_stm32_docs, mcp__stm32-docs__list_peripherals, mcp__stm32-docs__troubleshoot_error
+---
+
 # Router/Triage Agent
 
 ## Description

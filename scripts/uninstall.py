@@ -1,35 +1,29 @@
 #!/usr/bin/env python3
 """
-STM32 MCP Documentation Server - Complete Uninstall Script
+STM32 MCP Documentation Server - Database Cleanup Script
 
-This script provides a comprehensive uninstall that removes all STM32 MCP
-artifacts when the MCP server is removed via `claude mcp remove stm32-docs --scope user`.
+This script removes the ChromaDB database and related artifacts when uninstalling
+the STM32 MCP server.
 
-Since Claude Code/MCP protocol doesn't support uninstall hooks, users must run
-this script manually after running `claude mcp remove`.
+NOTE: Agent and command cleanup is now handled by the Claude Code plugin system.
+When users run `/plugin uninstall stm32-agents`, Claude Code automatically removes:
+- Agents from the agents/ directory
+- Commands from the commands/ directory
+- MCP server configuration
 
-IMPORTANT: There is no MCP uninstall hook mechanism available as of 2025.
-This is documented in GitHub issues:
-- anthropics/claude-code#11240 (Plugin Lifecycle Hooks)
-- anthropics/claude-code#9394 (postInstall/postUninstall hooks)
-Both remain unimplemented, so manual cleanup is required.
-
-What this removes:
-1. STM32 skills from ~/.claude/commands/ (auto-installed as Claude Code skills)
-2. Legacy agents from ~/.claude/agents/ (if present from older versions)
-3. Marker files ~/.claude/.stm32-skills-installed and ~/.claude/.stm32-agents-installed
-4. ChromaDB database (user's data directory or package data directory)
-5. MCP configuration entry from ~/.claude.json (if not using CLI)
+This script only handles:
+1. ChromaDB database (user's data directory or package data directory)
+2. MCP configuration entry from ~/.claude.json (manual fallback)
+3. Legacy marker files (from older versions)
 
 Usage:
     stm32-uninstall              # Interactive uninstall
     stm32-uninstall --yes        # Non-interactive (auto-confirm)
     stm32-uninstall --dry-run    # Show what would be removed
-    stm32-uninstall --keep-db    # Keep ChromaDB database
 
 Complete Uninstall Steps:
-    1. claude mcp remove stm32-docs --scope user  # Remove MCP config
-    2. stm32-uninstall                       # Clean up everything else
+    1. /plugin uninstall stm32-agents    # Remove plugin (agents, commands, MCP config)
+    2. stm32-uninstall                   # Clean up database
 """
 
 import sys
@@ -39,7 +33,7 @@ import shutil
 import argparse
 import platform
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 # Determine project root
 if getattr(sys, 'frozen', False):
@@ -169,52 +163,7 @@ def find_chromadb_locations() -> List[Path]:
     return locations
 
 
-# List of STM32 agent files (legacy - from older versions in ~/.claude/agents/)
-STM32_LEGACY_AGENTS = [
-    'router.md',
-    'triage.md',
-    'firmware.md',
-    'firmware-core.md',
-    'debug.md',
-    'bootloader.md',
-    'bootloader-programming.md',
-    'peripheral-comm.md',
-    'peripheral-analog.md',
-    'peripheral-graphics.md',
-    'power.md',
-    'power-management.md',
-    'safety.md',
-    'safety-certification.md',
-    'security.md',
-    'hardware-design.md',
-]
-
-# List of STM32 skills/commands installed to ~/.claude/commands/
-# These are auto-generated from agent files with stm32- prefix
-STM32_SKILLS = [
-    # Auto-installed skills (converted from agents)
-    'stm32-bootloader-programming.md',
-    'stm32-bootloader.md',
-    'stm32-debug.md',
-    'stm32-firmware-core.md',
-    'stm32-firmware.md',
-    'stm32-hardware-design.md',
-    'stm32-peripheral-analog.md',
-    'stm32-peripheral-comm.md',
-    'stm32-peripheral-graphics.md',
-    'stm32-power-management.md',
-    'stm32-power.md',
-    'stm32-safety-certification.md',
-    'stm32-safety.md',
-    'stm32-security.md',
-    # Core skills (may have been manually created or from older versions)
-    'stm32.md',
-    'stm32-hal.md',
-    'stm32-init.md',
-]
-
-
-def collect_items_to_remove(keep_db: bool = False) -> Tuple[List[Path], List[Path], int]:
+def collect_items_to_remove() -> Tuple[List[Path], List[Path], int]:
     """
     Collect all items that will be removed.
 
@@ -227,26 +176,10 @@ def collect_items_to_remove(keep_db: bool = False) -> Tuple[List[Path], List[Pat
 
     claude_dir = get_claude_config_dir()
 
-    # Skills/Commands (primary installation location)
-    commands_dir = claude_dir / 'commands'
-    for skill in STM32_SKILLS:
-        skill_path = commands_dir / skill
-        if skill_path.exists():
-            files.append(skill_path)
-            total_size += skill_path.stat().st_size
-
-    # Legacy agents (from older versions, now deprecated)
-    agents_dir = claude_dir / 'agents'
-    for agent in STM32_LEGACY_AGENTS:
-        agent_path = agents_dir / agent
-        if agent_path.exists():
-            files.append(agent_path)
-            total_size += agent_path.stat().st_size
-
-    # Marker files (both old and new names)
+    # Legacy marker files (from older versions before plugin system)
     marker_files = [
-        claude_dir / '.stm32-skills-installed',    # New marker (skills)
-        claude_dir / '.stm32-agents-installed',    # Legacy marker (agents)
+        claude_dir / '.stm32-skills-installed',    # Old skills marker
+        claude_dir / '.stm32-agents-installed',    # Legacy agents marker
     ]
     for marker in marker_files:
         if marker.exists():
@@ -254,14 +187,13 @@ def collect_items_to_remove(keep_db: bool = False) -> Tuple[List[Path], List[Pat
             total_size += marker.stat().st_size
 
     # ChromaDB database
-    if not keep_db:
-        for db_path in find_chromadb_locations():
-            if db_path.exists():
-                dirs.append(db_path)
-                # Calculate directory size
-                for f in db_path.rglob('*'):
-                    if f.is_file():
-                        total_size += f.stat().st_size
+    for db_path in find_chromadb_locations():
+        if db_path.exists():
+            dirs.append(db_path)
+            # Calculate directory size
+            for f in db_path.rglob('*'):
+                if f.is_file():
+                    total_size += f.stat().st_size
 
     return files, dirs, total_size
 
@@ -279,11 +211,8 @@ def remove_mcp_config_entry() -> bool:
     """
     Remove stm32-docs entry from ~/.claude.json if present.
 
-    Note: If user used `claude mcp add`, they should also run `claude mcp remove`.
-    This function handles manual JSON configurations.
-
-    Claude Code stores MCP configurations in ~/.claude.json (not ~/.claude/mcp.json).
-    The mcpServers key contains all MCP server configurations.
+    Note: This is a fallback for manual cleanup. The plugin system should
+    handle MCP configuration automatically.
     """
     home = Path.home()
     mcp_config = home / '.claude.json'
@@ -308,92 +237,37 @@ def remove_mcp_config_entry() -> bool:
         return False
 
 
-def check_claude_cli_available() -> bool:
-    """Check if the Claude CLI is available."""
-    import subprocess
-    try:
-        result = subprocess.run(
-            ["claude", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        return False
-
-
-def check_mcp_still_registered() -> bool:
-    """Check if stm32-docs is still registered in MCP config."""
-    import subprocess
-    try:
-        result = subprocess.run(
-            ["claude", "mcp", "list"],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        return 'stm32-docs' in result.stdout
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        return False
-
-
-def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -> bool:
+def uninstall(dry_run: bool = False, yes: bool = False) -> bool:
     """
-    Perform the complete uninstall.
+    Perform the database cleanup.
 
     Args:
         dry_run: Only show what would be removed
         yes: Skip confirmation prompt
-        keep_db: Keep ChromaDB database
 
     Returns:
-        True if uninstall completed successfully
+        True if cleanup completed successfully
     """
-    print_header("STM32 MCP Server - Complete Uninstall")
+    print_header("STM32 MCP Server - Database Cleanup")
 
-    # Check if MCP server is still registered
-    if check_claude_cli_available() and check_mcp_still_registered():
-        print_warning("stm32-docs is still registered as an MCP server!")
-        print_info("Run this command first to remove the MCP configuration:")
-        print(f"\n    {Colors.CYAN}claude mcp remove stm32-docs --scope user{Colors.RESET}\n")
-        if not yes:
-            response = input("Continue anyway? [y/N]: ").strip().lower()
-            if response != 'y':
-                print_info("Uninstall cancelled. Run the command above first.")
-                return False
+    print_info("This script removes the ChromaDB database and related artifacts.")
+    print_info("Agent/command cleanup is handled by: /plugin uninstall stm32-agents")
+    print()
 
     # Collect items to remove
-    files, dirs, total_size = collect_items_to_remove(keep_db)
+    files, dirs, total_size = collect_items_to_remove()
 
     if not files and not dirs:
-        print_info("Nothing to remove. STM32 MCP server appears to be already uninstalled.")
+        print_info("Nothing to remove. Database appears to be already cleaned up.")
         return True
 
     # Show what will be removed
     print(f"\n{Colors.BOLD}The following items will be removed:{Colors.RESET}\n")
 
-    claude_dir = get_claude_config_dir()
-
-    # Group by category
-    skills = [f for f in files if 'commands' in str(f)]
-    legacy_agents = [f for f in files if 'agents' in str(f) and not f.name.startswith('.')]
-    markers = [f for f in files if f.name.startswith('.stm32-')]
-
-    if skills:
-        print(f"  {Colors.CYAN}Skills/Commands ({len(skills)} files):{Colors.RESET}")
-        for f in skills:
-            print(f"    - {f.relative_to(claude_dir.parent)}")
-
-    if legacy_agents:
-        print(f"\n  {Colors.CYAN}Legacy Agents ({len(legacy_agents)} files):{Colors.RESET}")
-        for f in legacy_agents:
-            print(f"    - {f.relative_to(claude_dir.parent)}")
-
-    if markers:
-        print(f"\n  {Colors.CYAN}Marker Files:{Colors.RESET}")
-        for f in markers:
-            print(f"    - {f.relative_to(claude_dir.parent)}")
+    if files:
+        print(f"  {Colors.CYAN}Marker Files ({len(files)}):{Colors.RESET}")
+        for f in files:
+            print(f"    - {f}")
 
     if dirs:
         print(f"\n  {Colors.CYAN}Databases ({len(dirs)} directories):{Colors.RESET}")
@@ -409,9 +283,9 @@ def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -
     # Confirm
     if not yes:
         print()
-        response = input("Proceed with uninstall? [y/N]: ").strip().lower()
+        response = input("Proceed with cleanup? [y/N]: ").strip().lower()
         if response != 'y':
-            print_info("Uninstall cancelled.")
+            print_info("Cleanup cancelled.")
             return False
 
     # Perform removal
@@ -440,28 +314,29 @@ def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -
             print_error(f"Failed to remove {d}: {e}")
             error_count += 1
 
-    # Also try to remove MCP config entry (in case user didn't use CLI)
+    # Also try to remove MCP config entry (fallback)
     if remove_mcp_config_entry():
-        print_success("~/.claude.json entry for stm32-docs")
+        print_success("~/.claude.json entry for stm32-docs (manual fallback)")
         removed_count += 1
 
     # Summary
     print()
     if error_count == 0:
         print(f"{Colors.GREEN}{'='*60}{Colors.RESET}")
-        print(f"{Colors.GREEN}{'Uninstall Complete!'.center(60)}{Colors.RESET}")
+        print(f"{Colors.GREEN}{'Cleanup Complete!'.center(60)}{Colors.RESET}")
         print(f"{Colors.GREEN}{'='*60}{Colors.RESET}")
         print(f"\n  Removed {removed_count} items ({format_size(total_size)} freed)")
     else:
         print(f"{Colors.YELLOW}{'='*60}{Colors.RESET}")
-        print(f"{Colors.YELLOW}{'Uninstall Completed with Errors'.center(60)}{Colors.RESET}")
+        print(f"{Colors.YELLOW}{'Cleanup Completed with Errors'.center(60)}{Colors.RESET}")
         print(f"{Colors.YELLOW}{'='*60}{Colors.RESET}")
         print(f"\n  Removed: {removed_count}, Errors: {error_count}")
 
     # Additional cleanup instructions
-    print(f"\n{Colors.BOLD}Additional cleanup (optional):{Colors.RESET}")
-    print("  - Remove Python package: pip uninstall stm32-mcp-docs")
-    print("  - Clear uv cache: uv cache clean")
+    print(f"\n{Colors.BOLD}Complete uninstall steps:{Colors.RESET}")
+    print("  1. /plugin uninstall stm32-agents  # Remove plugin from Claude Code")
+    print("  2. pip uninstall stm32-mcp-docs    # Remove Python package (optional)")
+    print("  3. uv cache clean                  # Clear uv cache (optional)")
 
     return error_count == 0
 
@@ -469,27 +344,21 @@ def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="STM32 MCP Documentation Server - Complete Uninstall",
+        description="STM32 MCP Documentation Server - Database Cleanup",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Complete Uninstall Steps:
-  1. claude mcp remove stm32-docs --scope user  # Remove MCP configuration
-  2. stm32-uninstall                       # Clean up agents, commands, and database
+  1. /plugin uninstall stm32-agents   # Remove plugin (agents, commands, MCP)
+  2. stm32-uninstall                  # Clean up database
+  3. pip uninstall stm32-mcp-docs     # Remove Python package (optional)
+
+This script only removes the ChromaDB database and legacy marker files.
+The Claude Code plugin system handles agent and command cleanup.
 
 Examples:
-  stm32-uninstall                # Interactive uninstall
+  stm32-uninstall                # Interactive cleanup
   stm32-uninstall --yes          # Non-interactive (auto-confirm)
   stm32-uninstall --dry-run      # Show what would be removed
-  stm32-uninstall --keep-db      # Keep ChromaDB database
-
-Why manual cleanup is required:
-  The MCP protocol does not support uninstall hooks. When you run
-  `claude mcp remove`, only the MCP server configuration is removed.
-  Installed agents, commands, and databases are NOT cleaned up.
-
-  This is a known limitation documented in GitHub issues:
-  - anthropics/claude-code#11240 (Plugin Lifecycle Hooks)
-  - anthropics/claude-code#9394 (postInstall/postUninstall hooks)
         """
     )
 
@@ -502,11 +371,6 @@ Why manual cleanup is required:
         '--yes', '-y',
         action='store_true',
         help='Skip confirmation prompt'
-    )
-    parser.add_argument(
-        '--keep-db',
-        action='store_true',
-        help='Keep ChromaDB database (only remove agents and commands)'
     )
     parser.add_argument(
         '--no-color',
@@ -522,8 +386,7 @@ Why manual cleanup is required:
 
     success = uninstall(
         dry_run=args.dry_run,
-        yes=args.yes,
-        keep_db=args.keep_db
+        yes=args.yes
     )
 
     return 0 if success else 1

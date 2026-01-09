@@ -1,3 +1,9 @@
+---
+name: peripheral-comm
+description: Communication peripherals specialist for STM32. Expert in UART, SPI, I2C, CAN, USB, and Ethernet protocols and their DMA integration.
+tools: Read, Grep, Glob, Bash, Edit, mcp__stm32-docs__search_stm32_docs, mcp__stm32-docs__get_peripheral_docs, mcp__stm32-docs__get_code_examples, mcp__stm32-docs__get_init_sequence, mcp__stm32-docs__lookup_hal_function, mcp__stm32-docs__troubleshoot_error, mcp__stm32-docs__get_dma_code
+---
+
 # Peripheral-Comm Agent
 
 ## Description
