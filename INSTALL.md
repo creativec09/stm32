@@ -72,7 +72,7 @@ The easiest way to install is using Claude Code's plugin system. This method:
 In Claude Code, run:
 
 ```
-/plugin install github:creativec09/stm32-agents
+/plugin install github:creativec09/stm32
 ```
 
 ### What Gets Installed
@@ -122,19 +122,19 @@ If you prefer not to use the plugin system:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Add MCP server to Claude Code
-claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 Note: For private repositories, use a GitHub Personal Access Token:
 ```bash
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 ### Option B: pip Installation
 
 ```bash
 # Install the package
-pip install git+https://github.com/creativec09/stm32-agents.git
+pip install git+https://github.com/creativec09/stm32.git
 
 # Register with Claude Code
 claude mcp add stm32-docs --scope user -- python -m mcp_server
@@ -146,7 +146,7 @@ For contributors and customization:
 
 ```bash
 # Clone the repository
-git clone https://github.com/creativec09/stm32-agents.git
+git clone https://github.com/creativec09/stm32.git
 cd stm32-agents
 
 # Create virtual environment
@@ -170,7 +170,7 @@ If the `claude` CLI is not available, add to `~/.claude.json`:
   "mcpServers": {
     "stm32-docs": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"],
+      "args": ["--from", "git+https://github.com/creativec09/stm32.git", "stm32-mcp-docs"],
       "env": {
         "STM32_SERVER_MODE": "local",
         "STM32_LOG_LEVEL": "INFO"
@@ -349,7 +349,7 @@ for r in results:
 ```bash
 # Uninstall and reinstall the plugin
 /plugin uninstall stm32-agents
-/plugin install github:creativec09/stm32-agents
+/plugin install github:creativec09/stm32
 ```
 
 ### Manual Upgrade (Alternative Methods)
@@ -423,7 +423,7 @@ rm -rf logs/*.log
 claude --version
 
 # Check network connectivity
-curl https://github.com/creativec09/stm32-agents
+curl https://github.com/creativec09/stm32
 ```
 
 ### "No markdown files found"
@@ -436,7 +436,7 @@ ls mcp_server/markdowns/
 
 # If missing, reinstall from the git repository
 /plugin uninstall stm32-agents
-/plugin install github:creativec09/stm32-agents
+/plugin install github:creativec09/stm32
 ```
 
 ### MCP Server Not Connecting

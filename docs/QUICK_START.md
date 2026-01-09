@@ -6,7 +6,7 @@ Quick reference for the STM32 MCP Documentation Server.
 
 ```bash
 # One command installs everything
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 Replace `TOKEN` with your GitHub Personal Access Token.

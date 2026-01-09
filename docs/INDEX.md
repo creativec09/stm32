@@ -14,7 +14,7 @@ Complete index of all documentation for the STM32 MCP Documentation Server.
 The recommended installation method is via `uvx`:
 
 ```bash
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 See [Getting Started](GETTING_STARTED.md) for detailed instructions.

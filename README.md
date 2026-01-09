@@ -24,7 +24,7 @@ An MCP (Model Context Protocol) server that provides semantic search over STM32 
 
 ```bash
 # Install the STM32 plugin
-/plugin install github:creativec09/stm32-agents
+/plugin install github:creativec09/stm32
 ```
 
 This single command installs:
@@ -38,7 +38,7 @@ If you prefer not to use the plugin system, you can install just the MCP server:
 
 ```bash
 # Install the MCP server via uvx
-claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 Note: This method requires a GitHub Personal Access Token with `repo` scope for private repositories.
@@ -84,7 +84,7 @@ Or ask naturally:
 ### Method 1: Plugin Installation (Recommended)
 
 ```bash
-/plugin install github:creativec09/stm32-agents
+/plugin install github:creativec09/stm32
 ```
 
 This installs everything automatically:
@@ -96,7 +96,7 @@ This installs everything automatically:
 
 ```bash
 # Install the package
-pip install git+https://github.com/creativec09/stm32-agents.git
+pip install git+https://github.com/creativec09/stm32.git
 
 # Register with Claude Code
 claude mcp add stm32-docs --scope user -- python -m mcp_server
@@ -106,7 +106,7 @@ claude mcp add stm32-docs --scope user -- python -m mcp_server
 
 ```bash
 # Clone the repository
-git clone https://github.com/creativec09/stm32-agents.git
+git clone https://github.com/creativec09/stm32.git
 cd stm32-agents
 
 # Create virtual environment
@@ -251,7 +251,7 @@ stm32-agents/
 ### Setup Development Environment
 
 ```bash
-git clone https://github.com/creativec09/stm32-agents.git
+git clone https://github.com/creativec09/stm32.git
 cd stm32-agents
 python -m venv .venv
 source .venv/bin/activate

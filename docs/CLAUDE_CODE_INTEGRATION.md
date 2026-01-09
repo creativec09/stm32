@@ -21,7 +21,7 @@ The simplest way to install is via `uvx`:
 
 ```bash
 # For private repository - include your GitHub Personal Access Token
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 Replace `TOKEN` with your GitHub PAT (requires `repo` scope).
@@ -37,7 +37,7 @@ First run takes 5-10 minutes. Subsequent starts are instant.
 
 ```bash
 # Install the package
-pip install git+https://TOKEN@github.com/creativec09/stm32-agents.git
+pip install git+https://TOKEN@github.com/creativec09/stm32.git
 
 # Register with Claude Code
 claude mcp add stm32-docs --scope user -- python -m mcp_server
@@ -47,7 +47,7 @@ claude mcp add stm32-docs --scope user -- python -m mcp_server
 
 ```bash
 # Clone repository
-git clone https://github.com/creativec09/stm32-agents.git
+git clone https://github.com/creativec09/stm32.git
 cd stm32-agents
 
 # Create virtual environment
@@ -70,7 +70,7 @@ If the `claude` CLI is not available, manually edit `~/.claude.json`:
   "mcpServers": {
     "stm32-docs": {
       "command": "uvx",
-      "args": ["--from", "git+https://TOKEN@github.com/creativec09/stm32-agents.git", "stm32-mcp-docs"]
+      "args": ["--from", "git+https://TOKEN@github.com/creativec09/stm32.git", "stm32-mcp-docs"]
     }
   }
 }
@@ -242,7 +242,7 @@ curl http://YOUR_TAILSCALE_IP:8765/health
 
 1. Restart Claude Code after adding the MCP server
 2. Verify registration: `claude mcp list`
-3. Test manually: `uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs --help`
+3. Test manually: `uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs --help`
 
 ### No Search Results
 

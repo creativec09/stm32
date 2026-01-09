@@ -6,7 +6,7 @@ This file provides instructions for Claude Code when working with this project.
 
 The STM32 MCP Documentation Server is an MCP (Model Context Protocol) server that provides semantic search over 80+ STM32 microcontroller documentation files. It includes 16 specialized agents and auto-installs everything on first run.
 
-**Repository**: https://github.com/creativec09/stm32-agents (private)
+**Repository**: https://github.com/creativec09/stm32 (private)
 
 ## Installation
 
@@ -14,12 +14,12 @@ The STM32 MCP Documentation Server is an MCP (Model Context Protocol) server tha
 
 ```bash
 # Install MCP server with auto-setup (agents + docs auto-install on first run)
-claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 **Note**: For private repository access, include a GitHub Personal Access Token:
 ```bash
-claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
+claude mcp add stm32-docs --scope user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32.git stm32-mcp-docs
 ```
 
 ### What Auto-Installs on First Run
@@ -100,7 +100,7 @@ Agents are auto-installed to `~/.claude/agents/` on first MCP server run:
 
 ```bash
 # Clone repository
-git clone https://github.com/creativec09/stm32-agents.git
+git clone https://github.com/creativec09/stm32.git
 cd stm32-agents
 
 # Create virtual environment
