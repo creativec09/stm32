@@ -19,7 +19,7 @@ What this removes:
 2. STM32 slash commands from ~/.claude/commands/ (4 files)
 3. Marker file ~/.claude/.stm32-agents-installed
 4. ChromaDB database (user's data directory or package data directory)
-5. MCP configuration entry from ~/.claude/mcp.json (if not using CLI)
+5. MCP configuration entry from ~/.claude.json (if not using CLI)
 
 Usage:
     stm32-uninstall              # Interactive uninstall
@@ -257,13 +257,16 @@ def format_size(size_bytes: int) -> str:
 
 def remove_mcp_config_entry() -> bool:
     """
-    Remove stm32-docs entry from ~/.claude/mcp.json if present.
+    Remove stm32-docs entry from ~/.claude.json if present.
 
     Note: If user used `claude mcp add`, they should also run `claude mcp remove`.
     This function handles manual JSON configurations.
+
+    Claude Code stores MCP configurations in ~/.claude.json (not ~/.claude/mcp.json).
+    The mcpServers key contains all MCP server configurations.
     """
-    claude_dir = get_claude_config_dir()
-    mcp_config = claude_dir / 'mcp.json'
+    home = Path.home()
+    mcp_config = home / '.claude.json'
 
     if not mcp_config.exists():
         return False
@@ -419,7 +422,7 @@ def uninstall(dry_run: bool = False, yes: bool = False, keep_db: bool = False) -
 
     # Also try to remove MCP config entry (in case user didn't use CLI)
     if remove_mcp_config_entry():
-        print_success("mcp.json entry for stm32-docs")
+        print_success("~/.claude.json entry for stm32-docs")
         removed_count += 1
 
     # Summary

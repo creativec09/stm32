@@ -55,7 +55,7 @@ class TestProjectStructure:
             "storage/metadata.py",
             "scripts/__init__.py",
             "scripts/ingest_docs.py",
-            ".claude/mcp.json",
+            ".mcp.json",  # Project-scoped MCP config at project root
         ]
 
         for file_path in required_files:
@@ -64,11 +64,16 @@ class TestProjectStructure:
 
 
 class TestMCPConfiguration:
-    """Test MCP configuration validity."""
+    """Test MCP configuration validity.
+
+    Claude Code stores MCP configs in:
+    - Project scope: .mcp.json at project root
+    - User scope: ~/.claude.json
+    """
 
     def test_mcp_config_valid_json(self):
-        """Verify MCP configuration is valid JSON."""
-        config_path = PROJECT_ROOT / ".claude" / "mcp.json"
+        """Verify project-scoped MCP configuration is valid JSON."""
+        config_path = PROJECT_ROOT / ".mcp.json"
 
         if config_path.exists():
             content = config_path.read_text()
@@ -79,7 +84,7 @@ class TestMCPConfiguration:
 
     def test_mcp_config_has_required_fields(self):
         """Verify MCP config has required server fields."""
-        config_path = PROJECT_ROOT / ".claude" / "mcp.json"
+        config_path = PROJECT_ROOT / ".mcp.json"
 
         if config_path.exists():
             config = json.loads(config_path.read_text())
@@ -90,7 +95,7 @@ class TestMCPConfiguration:
 
     def test_mcp_server_path_valid(self):
         """Verify MCP server path in config is valid."""
-        config_path = PROJECT_ROOT / ".claude" / "mcp.json"
+        config_path = PROJECT_ROOT / ".mcp.json"
 
         if config_path.exists():
             config = json.loads(config_path.read_text())

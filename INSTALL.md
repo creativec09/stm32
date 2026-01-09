@@ -460,7 +460,7 @@ STM32_SERVER_MODE=network stm32-server
 
 ### Client Configuration
 
-On each client machine, add to `~/.claude/mcp.json`:
+On each client machine, add to `~/.claude.json`:
 
 ```json
 {
@@ -657,7 +657,7 @@ cd stm32-agents && pip install -e .
    stm32-setup --status
    ```
 
-2. Verify paths in `~/.claude/mcp.json` are correct
+2. Verify paths in `~/.claude.json` are correct (MCP configs are in this file)
 
 3. Test server directly:
    ```bash

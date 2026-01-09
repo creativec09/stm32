@@ -169,7 +169,7 @@ The STM32 MCP Documentation Server is a multi-layered system that processes STM3
 - **Use Case**: Single machine, default mode
 - **Transport**: Standard input/output
 - **Process**: Spawned as subprocess by Claude Code
-- **Configuration**: `.claude/mcp.json` with `command` and `args`
+- **Configuration**: `~/.claude.json` (user scope) or `.mcp.json` (project scope) with `command` and `args`
 
 ```json
 {
@@ -186,7 +186,7 @@ The STM32 MCP Documentation Server is a multi-layered system that processes STM3
 - **Use Case**: Multi-machine access via Tailscale
 - **Transport**: HTTP with Server-Sent Events
 - **Server**: Uvicorn/Starlette
-- **Configuration**: `.claude/mcp.json` with `type: "sse"` and `url`
+- **Configuration**: `~/.claude.json` (user scope) or `.mcp.json` (project scope) with `type: "sse"` and `url`
 
 ```json
 {

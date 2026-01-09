@@ -122,7 +122,11 @@ Claude Code can't connect to the MCP server or tools don't appear.
 
 ```bash
 # Verify MCP configuration
-cat .claude/mcp.json
+# For user scope (recommended): ~/.claude.json
+cat ~/.claude.json
+
+# For project scope: .mcp.json in project root
+cat .mcp.json
 
 # Test server manually
 python mcp_server/server.py
@@ -130,9 +134,12 @@ python mcp_server/server.py
 
 #### Solutions
 
-**1. Check mcp.json Paths**
+**1. Check Configuration Paths**
 
-Ensure all paths in `.claude/mcp.json` are absolute:
+For user-scoped MCP servers (`-s user`), configs are in `~/.claude.json`.
+For project-scoped servers (`-s project`), configs are in `.mcp.json` at project root.
+
+Ensure all paths in your config are absolute:
 
 ```json
 {
@@ -169,7 +176,7 @@ PYTHONPATH=/path/to/stm32-agents python -c "from mcp_server.server import mcp"
 
 **4. Restart Claude Code**
 
-After changing `mcp.json`, fully restart Claude Code (not just the window).
+After changing your MCP configuration, fully restart Claude Code (not just the window).
 
 ### Network Mode Problems
 
@@ -792,7 +799,7 @@ If you can't resolve an issue, please open a GitHub issue with:
 
 3. **Configuration**
    - `.env` contents (redact any secrets)
-   - `.claude/mcp.json` contents
+   - MCP configuration (`~/.claude.json` for user scope or `.mcp.json` for project scope)
    - Any custom settings
 
 4. **Logs**

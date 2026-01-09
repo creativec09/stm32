@@ -534,7 +534,11 @@ Test with actual Claude Code CLI.
 
 1. **Verify Configuration**:
 ```bash
-cat .claude/mcp.json
+# For user scope: ~/.claude.json
+cat ~/.claude.json
+
+# For project scope: .mcp.json
+cat .mcp.json
 ```
 
 2. **Start Claude Code**:
@@ -585,7 +589,7 @@ curl -N http://localhost:8765/sse
 ```
 
 4. **Test from Client**:
-Update `.claude/mcp.json`:
+Update `~/.claude.json` (or `.mcp.json` for project scope):
 ```json
 {
   "mcpServers": {

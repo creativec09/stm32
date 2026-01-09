@@ -15,19 +15,33 @@ def check_config_files():
     """Check MCP configuration files exist and are valid."""
     checks = []
 
-    # Check mcp.json
-    mcp_json = PROJECT_ROOT / ".claude" / "mcp.json"
-    if mcp_json.exists():
+    # Check project-scoped .mcp.json (at project root)
+    project_mcp = PROJECT_ROOT / ".mcp.json"
+    if project_mcp.exists():
         try:
-            config = json.loads(mcp_json.read_text())
+            config = json.loads(project_mcp.read_text())
             if "mcpServers" in config and "stm32-docs" in config["mcpServers"]:
-                checks.append(("mcp.json", True, "Valid configuration"))
+                checks.append((".mcp.json (project)", True, "Valid configuration"))
             else:
-                checks.append(("mcp.json", False, "Missing stm32-docs server"))
+                checks.append((".mcp.json (project)", False, "Missing stm32-docs server"))
         except json.JSONDecodeError as e:
-            checks.append(("mcp.json", False, f"Invalid JSON: {e}"))
+            checks.append((".mcp.json (project)", False, f"Invalid JSON: {e}"))
     else:
-        checks.append(("mcp.json", False, "File not found"))
+        checks.append((".mcp.json (project)", False, "File not found"))
+
+    # Check user-scoped ~/.claude.json
+    user_config = Path.home() / ".claude.json"
+    if user_config.exists():
+        try:
+            config = json.loads(user_config.read_text())
+            if "mcpServers" in config and "stm32-docs" in config.get("mcpServers", {}):
+                checks.append(("~/.claude.json (user)", True, "stm32-docs configured"))
+            else:
+                checks.append(("~/.claude.json (user)", True, "File exists, stm32-docs not configured"))
+        except json.JSONDecodeError as e:
+            checks.append(("~/.claude.json (user)", False, f"Invalid JSON: {e}"))
+    else:
+        checks.append(("~/.claude.json (user)", False, "File not found (OK if using project scope)"))
 
     # Check commands
     commands_dir = PROJECT_ROOT / ".claude" / "commands"

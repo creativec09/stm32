@@ -59,7 +59,7 @@ def check_structure() -> Tuple[bool, str]:
         "storage/chroma_store.py",
         "storage/metadata.py",
         "scripts/ingest_docs.py",
-        ".claude/mcp.json",
+        ".mcp.json",  # Project-scoped MCP config at project root
     ]
 
     missing = [f for f in required if not (PROJECT_ROOT / f).exists()]
@@ -165,23 +165,38 @@ def check_validator() -> Tuple[bool, str]:
 
 
 def check_mcp_json() -> Tuple[bool, str]:
-    """Check MCP configuration file."""
+    """Check MCP configuration file.
+
+    Checks both project-scoped (.mcp.json at project root) and
+    user-scoped (~/.claude.json) configurations.
+    """
     try:
         import json
-        mcp_path = PROJECT_ROOT / ".claude" / "mcp.json"
+        from pathlib import Path
 
-        if not mcp_path.exists():
-            return False, "mcp.json not found"
+        # Check project-scoped .mcp.json first
+        project_mcp = PROJECT_ROOT / ".mcp.json"
+        user_mcp = Path.home() / ".claude.json"
 
-        config = json.loads(mcp_path.read_text())
+        config_found = False
+        stm32_configured = False
 
-        if "mcpServers" not in config:
-            return False, "Missing mcpServers key"
+        if project_mcp.exists():
+            config = json.loads(project_mcp.read_text())
+            if "mcpServers" in config and "stm32-docs" in config["mcpServers"]:
+                return True, "MCP config valid (.mcp.json)"
+            config_found = True
 
-        if "stm32-docs" not in config["mcpServers"]:
-            return False, "Missing stm32-docs server"
+        if user_mcp.exists():
+            config = json.loads(user_mcp.read_text())
+            if "mcpServers" in config and "stm32-docs" in config.get("mcpServers", {}):
+                return True, "MCP config valid (~/.claude.json)"
+            config_found = True
 
-        return True, "MCP config valid"
+        if not config_found:
+            return False, "No MCP config found (.mcp.json or ~/.claude.json)"
+
+        return False, "stm32-docs not configured in any MCP config"
     except json.JSONDecodeError as e:
         return False, f"Invalid JSON: {str(e)[:40]}"
     except Exception as e:

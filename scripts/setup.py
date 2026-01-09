@@ -306,16 +306,16 @@ def configure_mcp(force: bool = False) -> bool:
             print_warning("Claude CLI configuration failed, falling back to manual config")
 
     # Fallback: Manual configuration
+    # Claude Code stores MCP configs in ~/.claude.json (not ~/.claude/mcp.json)
     print_info("Using manual MCP configuration (Claude CLI not available)...")
 
-    claude_dir = get_claude_config_dir()
-    mcp_config_path = claude_dir / 'mcp.json'
+    home = Path.home()
+    mcp_config_path = home / '.claude.json'
 
     install_type, _ = detect_installation_type()
     new_config = generate_mcp_config(python_path, install_type)
 
-    # Create claude directory if needed
-    claude_dir.mkdir(parents=True, exist_ok=True)
+    # No need to create directory - ~/.claude.json is a file in home directory
 
     # Handle existing configuration
     if mcp_config_path.exists():
@@ -323,11 +323,11 @@ def configure_mcp(force: bool = False) -> bool:
             with open(mcp_config_path, 'r') as f:
                 existing_config = json.load(f)
         except json.JSONDecodeError:
-            print_warning("Existing mcp.json is invalid, will be replaced")
+            print_warning("Existing ~/.claude.json is invalid, will be replaced")
             existing_config = {"mcpServers": {}}
 
         if "stm32-docs" in existing_config.get("mcpServers", {}) and not force:
-            print_info("stm32-docs already configured in mcp.json")
+            print_info("stm32-docs already configured in ~/.claude.json")
             # Update it anyway to ensure paths are correct
             existing_config["mcpServers"]["stm32-docs"] = new_config["mcpServers"]["stm32-docs"]
             with open(mcp_config_path, 'w') as f:
@@ -483,9 +483,10 @@ def verify_installation() -> bool:
             all_ok = False
 
     # Check MCP configuration
+    # Claude Code stores MCP configs in ~/.claude.json
     print("\n  Checking MCP configuration...")
-    claude_dir = get_claude_config_dir()
-    mcp_config = claude_dir / 'mcp.json'
+    home = Path.home()
+    mcp_config = home / '.claude.json'
     if mcp_config.exists():
         try:
             with open(mcp_config) as f:
@@ -573,9 +574,9 @@ def show_status():
     else:
         print(f"Vector database: {Colors.YELLOW}Empty (needs ingestion){Colors.RESET}")
 
-    # MCP configuration
-    claude_dir = get_claude_config_dir()
-    mcp_config = claude_dir / 'mcp.json'
+    # MCP configuration - Claude Code stores configs in ~/.claude.json
+    home = Path.home()
+    mcp_config = home / '.claude.json'
     if mcp_config.exists():
         try:
             with open(mcp_config) as f:
@@ -587,7 +588,7 @@ def show_status():
         except Exception:
             print(f"MCP configuration: {Colors.RED}Invalid{Colors.RESET}")
     else:
-        print(f"MCP configuration: {Colors.RED}Not found{Colors.RESET}")
+        print(f"MCP configuration: {Colors.YELLOW}Not found (~/.claude.json){Colors.RESET}")
 
     # Agents
     agents_dir = claude_dir / 'agents'
@@ -618,8 +619,9 @@ def uninstall():
 
     claude_dir = get_claude_config_dir()
 
-    # Remove from MCP config
-    mcp_config = claude_dir / 'mcp.json'
+    # Remove from MCP config - Claude Code stores configs in ~/.claude.json
+    home = Path.home()
+    mcp_config = home / '.claude.json'
     if mcp_config.exists():
         try:
             with open(mcp_config) as f:
