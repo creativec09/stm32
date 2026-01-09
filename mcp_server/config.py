@@ -86,8 +86,14 @@ class Settings(BaseSettings):
 
     @property
     def RAW_DOCS_DIR(self) -> Path:
-        """Directory containing raw markdown documentation files."""
-        return self.PROJECT_ROOT / "markdowns"
+        """Directory containing raw markdown documentation files.
+
+        The markdowns are bundled inside the mcp_server package to ensure
+        they are available when installed via pip/uvx.
+        """
+        # Markdowns are inside the mcp_server package
+        package_dir = Path(__file__).parent
+        return package_dir / "markdowns"
 
     @property
     def CHUNKS_DIR(self) -> Path:

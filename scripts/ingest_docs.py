@@ -4,11 +4,12 @@ Ingest STM32 markdown documentation into ChromaDB.
 
 Usage:
     python scripts/ingest_docs.py [--source-dir PATH] [--clear] [--verbose]
+    stm32-ingest [--clear] [--verbose]
 
 Examples:
-    python scripts/ingest_docs.py --clear  # Clear and re-ingest all
-    python scripts/ingest_docs.py -v       # Verbose output
-    python scripts/ingest_docs.py --source-dir ./markdowns
+    stm32-ingest --clear  # Clear and re-ingest all
+    stm32-ingest -v       # Verbose output
+    python scripts/ingest_docs.py --source-dir /path/to/custom/markdowns
 """
 
 import sys

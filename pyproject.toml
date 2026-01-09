@@ -146,11 +146,11 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mcp_server*", "pipeline*", "storage*", "scripts*"]
-exclude = ["tests*", "docs*", "markdowns*", ".venv*", "data*", "logs*"]
+exclude = ["tests*", "docs*", ".venv*", "data*", "logs*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.json", "*.md", "*.yaml", "*.yml", "*.example"]
-"mcp_server" = ["prompts/*.md", "py.typed"]
+"*" = ["*.json", "*.yaml", "*.yml", "*.example"]
+"mcp_server" = ["prompts/*.md", "markdowns/*.md", "py.typed"]
 
 # ============================================================================
 # Code Quality Tools Configuration

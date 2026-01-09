@@ -177,11 +177,11 @@ The `stm32-setup` command automatically:
 - Installs slash commands to `~/.claude/commands/`
 - Verifies the installation
 
-**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests all documentation from the `markdowns/` directory. This takes 5-10 minutes and you will see progress logs like:
+**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests the bundled STM32 documentation. This takes 5-10 minutes and you will see progress logs like:
 
 ```
 Database empty, starting auto-ingestion...
-Found 80 markdown files in markdowns/
+Found 80 markdown files in mcp_server/markdowns/
 [10/80] Processed an4013-introduction-to-timers...
 [20/80] Processed an4435-guidelines-for-obtaining...
 ...
@@ -631,15 +631,17 @@ pip install -e .
 
 ### "No markdown files found"
 
-The documentation files are missing:
+The documentation files are missing or not bundled correctly:
 
 ```bash
-# Check markdowns directory
-ls markdowns/
+# Check if markdowns are bundled in the package
+ls mcp_server/markdowns/
 
-# If missing, you may have installed via pip without cloning
-# Clone to get the documentation:
+# If missing, reinstall from the git repository to get bundled docs:
+uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs
+# Or clone and install in editable mode:
 git clone https://github.com/creativec09/stm32-agents.git
+cd stm32-agents && pip install -e .
 ```
 
 ### MCP Server Not Connecting

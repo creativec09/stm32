@@ -157,10 +157,20 @@ def detect_installation_type() -> Tuple[str, Path]:
 
 
 def check_markdowns_available() -> Tuple[bool, Optional[Path]]:
-    """Check if markdown documentation is available."""
-    markdowns_dir = PROJECT_ROOT / 'markdowns'
-    if markdowns_dir.exists() and list(markdowns_dir.glob('*.md')):
-        return True, markdowns_dir
+    """Check if markdown documentation is available.
+
+    The markdowns are bundled inside the mcp_server package.
+    """
+    # Check package location first (where markdowns are bundled)
+    package_markdowns_dir = PROJECT_ROOT / 'mcp_server' / 'markdowns'
+    if package_markdowns_dir.exists() and list(package_markdowns_dir.glob('*.md')):
+        return True, package_markdowns_dir
+
+    # Fallback: check old location for backward compatibility
+    legacy_markdowns_dir = PROJECT_ROOT / 'markdowns'
+    if legacy_markdowns_dir.exists() and list(legacy_markdowns_dir.glob('*.md')):
+        return True, legacy_markdowns_dir
+
     return False, None
 
 
@@ -412,10 +422,10 @@ def run_ingestion(clear: bool = False, verbose: bool = False, force: bool = Fals
     has_markdowns, markdowns_path = check_markdowns_available()
     if not has_markdowns:
         print_error("Markdown documentation not found!")
-        print_info("The markdowns/ directory with STM32 documentation is required.")
-        print_info("If you installed via pip, you need to clone the repo to get the docs:")
-        print_info("  git clone https://github.com/creativec09/stm32-agents.git")
-        print_info("  cp -r stm32-agents/markdowns .")
+        print_info("The mcp_server/markdowns/ directory with STM32 documentation is required.")
+        print_info("This should be included when installing via pip/uvx from the repository.")
+        print_info("If missing, reinstall from the git repository:")
+        print_info("  uvx --from git+https://github.com/creativec09/stm32-agents.git stm32-mcp-docs")
         return False
 
     # Check if already populated

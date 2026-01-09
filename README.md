@@ -67,7 +67,7 @@ The `stm32-setup` command automatically:
 - Installs slash commands to `~/.claude/commands/`
 - Verifies the installation
 
-**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests all documentation from the `markdowns/` directory. This takes 5-10 minutes and you will see progress logs. Subsequent starts are instant.
+**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests the bundled STM32 documentation. This takes 5-10 minutes and you will see progress logs. Subsequent starts are instant.
 
 ### Start Using
 
@@ -338,7 +338,7 @@ stm32-agents/
 │   └── export_chunks.py     # Data export
 ├── tests/                   # Test suite
 ├── docs/                    # Comprehensive documentation
-├── markdowns/               # Source STM32 documentation (80+ files)
+├── mcp_server/markdowns/    # Bundled STM32 documentation (80+ files)
 ├── data/                    # Generated data
 │   └── chroma_db/           # ChromaDB vector storage
 ├── .mcp.json                # Project-level MCP configuration (Claude Code)

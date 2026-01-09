@@ -72,7 +72,7 @@ Network Mode (Tailscale):
 
 Quick Start:
     1. Install: pip install -e .
-    2. Ingest docs: stm32-ingest --source-dir ./markdowns
+    2. Ingest docs: stm32-ingest
     3. Run server: stm32-docs
     4. Search: stm32-search "UART DMA configuration"
 """

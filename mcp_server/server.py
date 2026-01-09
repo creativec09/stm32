@@ -234,17 +234,17 @@ def check_database_ready(ctx: Context) -> tuple[bool, str]:
         return False, (
             f"Database not ready: {server_ctx.message}\n\n"
             "To set up the database:\n"
-            "1. Add STM32 markdown documentation files to the 'markdowns/' directory\n"
+            "1. Ensure the package was installed correctly with bundled documentation\n"
             "2. Restart the MCP server to trigger auto-ingestion\n"
-            "3. Or run 'python scripts/ingest_docs.py' manually"
+            "3. Or run 'stm32-ingest' manually"
         )
     if server_ctx.chunk_count == 0:
         return False, (
             "Database is empty. No documentation has been indexed.\n\n"
             "To populate the database:\n"
-            "1. Add STM32 markdown documentation files to the 'markdowns/' directory\n"
+            "1. Ensure the package was installed correctly with bundled documentation\n"
             "2. Restart the MCP server to trigger auto-ingestion\n"
-            "3. Or run 'python scripts/ingest_docs.py' manually"
+            "3. Or run 'stm32-ingest' manually"
         )
     return True, ""
 
@@ -277,9 +277,9 @@ def get_server_status(ctx: Context) -> str:
 
     if server_ctx.status == "setup_required":
         status_data["instructions"] = [
-            "1. Add STM32 markdown documentation files to the 'markdowns/' directory",
+            "1. Ensure the package was installed correctly with bundled documentation",
             "2. Restart the MCP server to trigger auto-ingestion",
-            "3. Or run 'python scripts/ingest_docs.py' manually"
+            "3. Or run 'stm32-ingest' manually"
         ]
 
     return json.dumps(status_data, indent=2)

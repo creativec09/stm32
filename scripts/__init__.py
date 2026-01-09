@@ -28,7 +28,7 @@ Usage:
 
     # Via Python scripts directly
     python scripts/start_server.py --mode network --port 8765
-    python scripts/ingest_docs.py --source-dir ./markdowns
+    python scripts/ingest_docs.py
     python scripts/search.py "GPIO toggle" --peripheral GPIO
 """
 
