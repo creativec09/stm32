@@ -31,6 +31,7 @@ from pathlib import Path
 import sys
 import logging
 import json
+import shutil
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -66,6 +67,64 @@ logging.basicConfig(
     format=settings.LOG_FORMAT
 )
 logger = logging.getLogger("stm32-docs")
+
+
+# ============================================================================
+# AUTO-INSTALLATION - Install bundled agents on first run
+# ============================================================================
+
+def install_agents_if_needed() -> bool:
+    """
+    Auto-install bundled agents to user's Claude config directory.
+
+    This runs on MCP server startup and installs STM32 agents to ~/.claude/agents/
+    if they haven't been installed before. Uses a marker file to track installation.
+
+    Returns:
+        True if agents were installed, False if already installed or no agents found
+    """
+    marker = Path.home() / '.claude' / '.stm32-agents-installed'
+
+    if marker.exists():
+        logger.debug("STM32 agents already installed (marker file exists)")
+        return False
+
+    # Find bundled agents in package
+    package_dir = Path(__file__).parent
+    source_agents = package_dir / 'agents'
+
+    if not source_agents.exists():
+        logger.warning(f"No bundled agents found at {source_agents}")
+        return False
+
+    # Create target directory
+    target_dir = Path.home() / '.claude' / 'agents'
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy agents, skipping templates and guides
+    installed = 0
+    skipped = []
+    for agent_file in source_agents.glob('*.md'):
+        # Skip template files (start with _) and guide files (contain GUIDE)
+        if agent_file.name.startswith('_') or 'GUIDE' in agent_file.name.upper():
+            skipped.append(agent_file.name)
+            continue
+
+        target_path = target_dir / agent_file.name
+        shutil.copy2(agent_file, target_path)
+        installed += 1
+
+    # Create marker file to prevent re-installation
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.touch()
+
+    logger.info("=" * 60)
+    logger.info(f"Auto-installed {installed} STM32 agents to {target_dir}")
+    if skipped:
+        logger.debug(f"Skipped non-agent files: {', '.join(skipped)}")
+    logger.info("=" * 60)
+
+    return True
 
 
 # ============================================================================
@@ -105,6 +164,9 @@ async def server_lifespan(server: FastMCP):
 
     # Ensure required directories exist
     settings.ensure_directories()
+
+    # Auto-install agents on first run
+    install_agents_if_needed()
 
     # Initialize the ChromaDB store
     logger.info(f"Initializing ChromaDB store at {settings.CHROMA_DB_PATH}")

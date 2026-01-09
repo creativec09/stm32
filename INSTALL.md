@@ -67,6 +67,8 @@ The fastest way to use this MCP server from a private repository is via `uvx`. T
 - No need to clone the repository
 - Works with version tags for reproducible installations
 - Caches the package for fast subsequent launches
+- **Auto-installs 16 STM32 agents** to `~/.claude/agents/` on first run
+- **Auto-indexes documentation** on first run (5-10 min initial setup)
 
 ### Prerequisites
 
@@ -177,7 +179,11 @@ The `stm32-setup` command automatically:
 - Installs slash commands to `~/.claude/commands/`
 - Verifies the installation
 
-**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests the bundled STM32 documentation. This takes 5-10 minutes and you will see progress logs like:
+**Auto-Setup on First Run**: On first use, the MCP server automatically:
+- Installs 16 STM32 agents to `~/.claude/agents/`
+- Ingests the bundled STM32 documentation (takes 5-10 minutes)
+
+You will see progress logs like:
 
 ```
 Database empty, starting auto-ingestion...
@@ -235,9 +241,9 @@ stm32-setup --status
 | Python package | Site-packages or editable | `pip install` |
 | MCP server config | User config (via `claude mcp add`) | `claude mcp add` or `stm32-setup` |
 | Project MCP config | `.mcp.json` (project root) | Already in repository |
-| Agent definitions | `~/.claude/agents/*.md` | `stm32-setup` |
+| Agent definitions | `~/.claude/agents/*.md` | **Auto-installed on first MCP server run** |
 | Slash commands | `~/.claude/commands/*.md` | `stm32-setup` |
-| Vector database | `data/chroma_db/` | Auto-built on first run or `stm32-setup --ingest` |
+| Vector database | `data/chroma_db/` | **Auto-built on first MCP server run** |
 | CLI commands | `stm32-*` | `pip install` |
 
 ### CLI Commands Available After Install

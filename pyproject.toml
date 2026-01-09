@@ -150,7 +150,7 @@ exclude = ["tests*", "docs*", ".venv*", "data*", "logs*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.yaml", "*.yml", "*.example"]
-"mcp_server" = ["prompts/*.md", "markdowns/*.md", "py.typed"]
+"mcp_server" = ["prompts/*.md", "markdowns/*.md", "agents/*.md", "py.typed"]
 
 # ============================================================================
 # Code Quality Tools Configuration

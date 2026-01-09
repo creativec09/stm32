@@ -32,6 +32,9 @@ include mcp_server/py.typed
 # Include bundled markdown documentation
 recursive-include mcp_server/markdowns *.md
 
+# Include bundled agent definitions for auto-installation
+recursive-include mcp_server/agents *.md
+
 # Exclude development and generated files
 global-exclude __pycache__
 global-exclude *.py[cod]

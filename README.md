@@ -67,7 +67,11 @@ The `stm32-setup` command automatically:
 - Installs slash commands to `~/.claude/commands/`
 - Verifies the installation
 
-**Auto-Ingestion**: On first use, the MCP server automatically detects an empty database and ingests the bundled STM32 documentation. This takes 5-10 minutes and you will see progress logs. Subsequent starts are instant.
+**Auto-Setup on First Run**: On first use, the MCP server automatically:
+- **Installs agents**: Copies 16 STM32 agents to `~/.claude/agents/` for use with Claude Code
+- **Ingests documentation**: Indexes the bundled STM32 documentation (takes 5-10 minutes)
+
+Subsequent starts are instant. You'll see progress logs during initial setup.
 
 ### Start Using
 
@@ -102,7 +106,7 @@ For installation from the private GitHub repository using `uvx`:
 claude mcp add stm32-docs -s user -- uvx --from git+https://TOKEN@github.com/creativec09/stm32-agents.git stm32-mcp-docs
 ```
 
-This installs and runs the MCP server directly from the private repository without needing to clone it first.
+This installs and runs the MCP server directly from the private repository without needing to clone it first. On first run, the server automatically installs 16 STM32 agents to `~/.claude/agents/` and indexes the bundled documentation.
 
 #### With Specific Version Tag
 ```bash
