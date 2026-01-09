@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "stm32-marketplace",
+  "version": "1.0.0",
+  "description": "STM32 development tools for Claude Code",
+  "owner": {
+    "name": "creativec09",
+    "email": "creativec09@users.noreply.github.com"
+  },
+  "plugins": [
+    {
+      "name": "stm32",
+      "description": "STM32 microcontroller development tools with semantic documentation search, specialized agents, and HAL reference",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}
