@@ -8,6 +8,59 @@ This document contains agent-executable tasks for building the universal documen
 
 ---
 
+## Claude Code Plugin Architecture Requirements
+
+**CRITICAL**: Based on official Claude Code documentation validation, our plugins MUST follow these patterns:
+
+### Plugin Structure (REQUIRED)
+```
+docsearch-stm32/
+├── .claude-plugin/
+│   └── plugin.json          # Plugin manifest (REQUIRED)
+├── agents/
+│   ├── stm32-firmware.md    # Auto-discovered by Claude Code
+│   ├── stm32-debug.md       # NO copying to ~/.claude/agents/
+│   └── ...
+├── commands/
+│   ├── search.md            # Becomes /stm32:search
+│   └── init.md              # Becomes /stm32:init
+├── server/
+│   └── .mcp.json            # Bundled MCP server config
+└── src/
+    └── docsearch_stm32/
+        └── ...
+```
+
+### Agent Frontmatter (REQUIRED)
+```yaml
+---
+name: stm32-firmware                    # REQUIRED: lowercase, hyphens, matches filename
+description: Expert STM32 firmware...   # REQUIRED: detailed for Claude's delegation decision
+tools: Read, Grep, Glob, Bash          # OPTIONAL: restrict available tools
+model: sonnet                           # OPTIONAL: sonnet, opus, haiku, or inherit
+---
+```
+
+### Plugin Manifest (REQUIRED)
+```json
+// .claude-plugin/plugin.json
+{
+  "name": "stm32",
+  "description": "STM32 microcontroller documentation search",
+  "version": "1.0.0",
+  "author": {"name": "Your Name"},
+  "repository": "https://github.com/creativec09/stm32"
+}
+```
+
+### Key Architecture Rules
+1. **Agents are auto-discovered** from plugin's `agents/` directory - DO NOT copy to `~/.claude/agents/`
+2. **Commands are namespaced** - `/stm32:search` not `/stm32-search`
+3. **MCP servers are bundled** - defined in `server/.mcp.json` or inline in `plugin.json`
+4. **First-run init** should only build database, NOT copy agents/commands
+
+---
+
 ## Patterns to Steal from Existing Projects
 
 ### From Knowledge-Base-MCP (puran-water)
@@ -810,21 +863,40 @@ Document any issues encountered for the next phase.
 
 ## Phase 2: Create STM32 Domain Plugin [SEQUENTIAL within phase]
 
-### Task 2.1: Create STM32 Package Structure
+### Task 2.1: Create STM32 Package Structure (Claude Code Plugin Format)
 ```
 AGENT_TYPE: Opus
 EXECUTION: SEQUENTIAL (first in Phase 2)
-ESTIMATED_TIME: 15 minutes
+ESTIMATED_TIME: 20 minutes
 DEPENDENCIES: Phase 1 complete
 ```
 
 **Prompt for Agent:**
 ```
-You are creating the STM32 domain plugin package structure.
+You are creating the STM32 domain plugin package structure following Claude Code plugin architecture.
+
+CRITICAL: This must follow Claude Code's plugin discovery patterns:
+- .claude-plugin/plugin.json is REQUIRED for plugin discovery
+- agents/ directory is auto-discovered (no copying needed)
+- commands/ directory is auto-discovered (no copying needed)
+- server/.mcp.json defines the bundled MCP server
 
 Create:
 packages/
 └── docsearch-stm32/
+    ├── .claude-plugin/
+    │   └── plugin.json            # REQUIRED: Plugin manifest
+    ├── agents/                    # Auto-discovered by Claude Code
+    │   ├── stm32-firmware.md
+    │   ├── stm32-debug.md
+    │   └── ... (all 16 agents)
+    ├── commands/                  # Auto-discovered, namespaced as /stm32:*
+    │   ├── search.md              # -> /stm32:search
+    │   ├── init.md                # -> /stm32:init
+    │   ├── hal.md                 # -> /stm32:hal
+    │   └── debug.md               # -> /stm32:debug
+    ├── server/
+    │   └── .mcp.json              # Bundled MCP server config
     ├── pyproject.toml
     ├── README.md
     └── src/
@@ -851,22 +923,146 @@ packages/
             ├── server/
             │   ├── __init__.py
             │   └── mcp_server.py
-            ├── agents/           (copy from current)
-            ├── commands/         (copy from current)
-            └── markdowns/        (copy from current)
+            └── markdowns/        (bundled documentation)
 
-For pyproject.toml:
-- Name: docsearch-stm32
-- Version: 0.1.0
-- Dependency: docsearch-core>=0.1.0
-- Entry point: stm32-mcp-docs = docsearch_stm32.__main__:main
-- Plugin entry point: [project.entry-points."docsearch_domains"]
-                      stm32 = "docsearch_stm32.plugin:STM32Plugin"
+1. Create .claude-plugin/plugin.json:
+   ```json
+   {
+     "name": "stm32",
+     "description": "STM32 microcontroller documentation search with semantic search, code examples, and 16 expert agents",
+     "version": "1.0.0",
+     "author": {
+       "name": "Your Name"
+     },
+     "repository": "https://github.com/creativec09/stm32",
+     "license": "MIT",
+     "keywords": ["stm32", "microcontroller", "embedded", "arm", "cortex"]
+   }
+   ```
 
-Copy from current repository:
-- mcp_server/agents/ -> docsearch_stm32/agents/
-- .claude/commands/ -> docsearch_stm32/commands/
-- mcp_server/markdowns/ -> docsearch_stm32/markdowns/
+2. Create server/.mcp.json:
+   ```json
+   {
+     "mcpServers": {
+       "stm32-docs": {
+         "command": "python",
+         "args": ["-m", "docsearch_stm32"],
+         "env": {}
+       }
+     }
+   }
+   ```
+
+3. For pyproject.toml:
+   - Name: docsearch-stm32
+   - Version: 0.1.0
+   - Dependency: docsearch-core>=0.1.0
+   - Entry point: stm32-mcp-docs = docsearch_stm32.__main__:main
+   - Plugin entry point: [project.entry-points."docsearch_domains"]
+                         stm32 = "docsearch_stm32.plugin:STM32Plugin"
+
+4. Copy from current repository:
+   - mcp_server/agents/ -> packages/docsearch-stm32/agents/
+   - .claude/commands/ -> packages/docsearch-stm32/commands/
+   - mcp_server/markdowns/ -> packages/docsearch-stm32/src/docsearch_stm32/markdowns/
+
+NOTE: Agents and commands go at PLUGIN ROOT (not in src/), so Claude Code can discover them.
+Markdowns go in src/ because they're bundled with the Python package.
+```
+
+---
+
+### Task 2.1b: Audit and Fix Agent Frontmatter
+```
+AGENT_TYPE: Opus
+EXECUTION: SEQUENTIAL (after 2.1)
+ESTIMATED_TIME: 25 minutes
+DEPENDENCIES: Task 2.1
+```
+
+**Prompt for Agent:**
+```
+You are auditing and fixing all 16 STM32 agent files to ensure they comply with Claude Code's required frontmatter format.
+
+REQUIRED FRONTMATTER FIELDS:
+- name: REQUIRED - lowercase, hyphens, must match filename (minus .md)
+- description: REQUIRED - detailed description for Claude's delegation decision
+- tools: OPTIONAL - restrict which tools the agent can use
+- model: OPTIONAL - sonnet (default), opus, haiku, or inherit
+
+Read all agent files in:
+- packages/docsearch-stm32/agents/ (or mcp_server/agents/ if not yet copied)
+
+For EACH agent file:
+
+1. Check frontmatter exists and has required fields
+2. Ensure 'name' matches filename (e.g., stm32-firmware.md -> name: stm32-firmware)
+3. Ensure 'description' is detailed enough for Claude to know when to delegate
+   BAD:  "Firmware development"
+   GOOD: "Expert STM32 firmware developer. Use for implementing peripheral drivers, interrupt handlers, DMA transfers, and HAL/LL library usage. Proactively delegate firmware implementation tasks."
+4. Add 'tools' if the agent should be restricted
+5. Add 'model' if non-default (most should use sonnet)
+
+Example CORRECT format:
+```yaml
+---
+name: stm32-firmware
+description: Expert STM32 firmware developer specializing in HAL/LL libraries. Use for implementing peripheral drivers, interrupt handlers, DMA configurations, and initialization sequences. Proactively use for any firmware code generation or modification tasks.
+tools: Read, Grep, Glob, Bash, Edit, Write
+model: sonnet
+---
+
+You are an expert STM32 firmware developer...
+```
+
+Create a report listing:
+1. Each agent file
+2. Current frontmatter (before)
+3. Fixed frontmatter (after)
+4. Changes made
+
+Then update all agent files with the corrected frontmatter.
+
+Output: packages/docsearch-stm32/agents/*.md (all 16 files updated)
+```
+
+---
+
+### Task 2.1c: Rename Commands for Plugin Namespacing
+```
+AGENT_TYPE: Opus
+EXECUTION: PARALLEL with Task 2.1b
+ESTIMATED_TIME: 15 minutes
+DEPENDENCIES: Task 2.1
+```
+
+**Prompt for Agent:**
+```
+You are renaming slash command files for Claude Code plugin namespacing.
+
+When commands are in a plugin named "stm32", they become:
+- commands/search.md -> /stm32:search
+- commands/init.md -> /stm32:init
+
+Current command structure (in .claude/commands/ or mcp_server/commands/):
+- stm32.md
+- stm32-init.md
+- stm32-hal.md
+- stm32-debug.md
+
+These need to be renamed to avoid double-nesting:
+- stm32.md -> search.md (becomes /stm32:search)
+- stm32-init.md -> init.md (becomes /stm32:init)
+- stm32-hal.md -> hal.md (becomes /stm32:hal)
+- stm32-debug.md -> debug.md (becomes /stm32:debug)
+
+Your task:
+1. Copy command files to packages/docsearch-stm32/commands/
+2. Rename them to short names (without stm32- prefix)
+3. Update any internal references to the command names
+4. Ensure $ARGUMENTS handling still works
+
+Output: packages/docsearch-stm32/commands/*.md (renamed files)
 ```
 
 ---
@@ -874,7 +1070,7 @@ Copy from current repository:
 ### Task 2.2: Migrate STM32 Tokenizer
 ```
 AGENT_TYPE: Opus
-EXECUTION: SEQUENTIAL (after 2.1)
+EXECUTION: PARALLEL with Tasks 2.3, 2.4, 2.5 (after 2.1b, 2.1c complete)
 ESTIMATED_TIME: 20 minutes
 DEPENDENCIES: Task 2.1
 ```
@@ -1222,7 +1418,7 @@ The server should work identically to the current one from a user perspective.
 
 ---
 
-### Task 2.8: Create First-Run Initialization
+### Task 2.8: Create First-Run Initialization (Database Only)
 ```
 AGENT_TYPE: Opus
 EXECUTION: PARALLEL with Task 2.7
@@ -1234,11 +1430,16 @@ DEPENDENCIES: Task 2.6
 ```
 You are creating the first-run initialization system for docsearch-stm32.
 
-This handles:
-- Copying agents to ~/.claude/agents/
-- Copying commands to ~/.claude/commands/
+CRITICAL: Per Claude Code plugin architecture:
+- Agents are AUTO-DISCOVERED from plugin's agents/ directory
+- Commands are AUTO-DISCOVERED from plugin's commands/ directory
+- DO NOT copy agents or commands to ~/.claude/agents/ or ~/.claude/commands/
+- First-run init ONLY needs to build the vector database
+
+This handles ONLY:
 - Building the vector database from bundled markdowns
 - Creating the BM25 index
+- Database versioning for updates
 
 Read our current implementation:
 - mcp_server/ingestion.py
@@ -1252,38 +1453,42 @@ Your task:
        def __init__(self, plugin: STM32Plugin):
            self.plugin = plugin
            self.data_dir = Path.home() / ".docsearch" / "stm32"
-           self.marker_file = self.data_dir / ".installed"
+           self.db_version_file = self.data_dir / ".db_version"
+           self.current_version = "1.0.0"  # Increment when docs change
 
-       def is_initialized(self) -> bool:
-           return self.marker_file.exists()
+       def needs_initialization(self) -> bool:
+           """Check if database needs to be built or updated."""
+           if not self.db_version_file.exists():
+               return True
+           stored_version = self.db_version_file.read_text().strip()
+           return stored_version != self.current_version
 
        def initialize(self, force: bool = False) -> None:
-           if self.is_initialized() and not force:
+           if not force and not self.needs_initialization():
                return
 
-           self._install_agents()
-           self._install_commands()
            self._build_database()
-           self._create_marker()
+           self._save_version()
 
-       def _install_agents(self) -> None:
-           # Copy from plugin.get_agents_path() to ~/.claude/agents/
-           # Check local vs global (use logic from stm32-setup.md)
-
-       def _install_commands(self) -> None:
-           # Copy from plugin.get_commands_path() to ~/.claude/commands/
+       # NOTE: No _install_agents() or _install_commands()
+       # Claude Code auto-discovers these from plugin directory
 
        def _build_database(self) -> None:
            # Use create_retriever to build ChromaDB + BM25
            # Process all markdowns from plugin.get_markdowns_path()
+           pass
+
+       def _save_version(self) -> None:
+           self.data_dir.mkdir(parents=True, exist_ok=True)
+           self.db_version_file.write_text(self.current_version)
    ```
 
 2. Integrate with MCP server startup in __main__.py:
    ```python
    def main():
        initializer = STM32Initializer(plugin)
-       if not initializer.is_initialized():
-           print("[stm32-docs] First run detected, initializing...")
+       if initializer.needs_initialization():
+           print("[stm32-docs] Building documentation database...")
            initializer.initialize()
 
        # Start MCP server
@@ -1295,6 +1500,10 @@ Your task:
    - Store ingestion metadata
 
 4. Write tests for initialization logic (with mocked filesystem)
+
+IMPORTANT: Remove any logic that copies agents or commands. Claude Code
+discovers these automatically from the plugin's agents/ and commands/
+directories when the plugin is installed.
 ```
 
 ---
@@ -1619,10 +1828,14 @@ Phase 1 (Core) ─────────────────────�
        │                                                          │
        ▼                                                          │
 Phase 2 (STM32 Plugin) ───────────────────────────────────────────┤
-  Task 2.1 ── [SEQUENTIAL - first]                                │
+  Task 2.1  ── [SEQUENTIAL - first: package + plugin manifest]    │
        │                                                          │
        ▼                                                          │
-  Task 2.2 ─┬─ [PARALLEL]                                         │
+  Task 2.1b ─┬─ [PARALLEL - agent frontmatter audit]              │
+  Task 2.1c ─┘   [PARALLEL - command renaming]                    │
+       │                                                          │
+       ▼                                                          │
+  Task 2.2 ─┬─ [PARALLEL - after 2.1b, 2.1c]                      │
   Task 2.3 ─┤                                                     │
   Task 2.4 ─┤                                                     │
   Task 2.5 ─┘                                                     │
@@ -1632,7 +1845,7 @@ Phase 2 (STM32 Plugin) ───────────────────
        │                                                          │
        ▼                                                          │
   Task 2.7 ─┬─ [PARALLEL]                                         │
-  Task 2.8 ─┘                                                     │
+  Task 2.8 ─┘   (DB init only - no agent copying!)                │
        │                                                          │
        ▼                                                          │
 Phase 3 (Validation) ─────────────────────────────────────────────┤
@@ -1654,21 +1867,21 @@ Phase 4 (Release) ────────────────────�
 |-------|-------------|-----------------|------------|
 | 0: Audit | 4 | 1 (3 tasks) | 1 |
 | 1: Core | 8 | 2 (5 tasks) | 3 |
-| 2: STM32 | 8 | 2 (6 tasks) | 2 |
+| 2: STM32 | 10 | 3 (8 tasks) | 2 |
 | 3: Validation | 3 | 1 (3 tasks) | 0 |
 | 4: Release | 2 | 0 | 2 |
-| **Total** | **25** | **6 groups** | **8 tasks** |
+| **Total** | **27** | **7 groups** | **8 tasks** |
 
 ### Estimated Timeline
 
 With parallel execution:
 - Phase 0: ~1 hour (3 parallel audits + synthesis)
 - Phase 1: ~2 hours (with parallel task groups)
-- Phase 2: ~2 hours (with parallel task groups)
+- Phase 2: ~2.5 hours (with parallel task groups, +2 new tasks)
 - Phase 3: ~45 minutes (all parallel)
 - Phase 4: ~1 hour (sequential)
 
-**Total: ~7 hours of agent time** (can be run over multiple sessions)
+**Total: ~7.5 hours of agent time** (can be run over multiple sessions)
 
 ---
 
