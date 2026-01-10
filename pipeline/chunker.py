@@ -90,6 +90,7 @@ class STM32Chunker:
         'user_guide': [r'user[\s_-]?guide', r'user[\s_-]?manual', r'_ug\.md$'],
         'programming_manual': [r'programming[\s_-]?manual', r'\bPM\d{4}\b', r'_pm\.md$'],
         'errata': [r'errata[\s_-]?sheet', r'\bES\d{4}\b', r'_es\.md$'],
+        'hal_guide': [r'hal[\s_-]?guide', r'stm32cube', r'hal[\s_-]?description', r'_hal\.md$'],
     }
 
     def __init__(self, config: ChunkingConfig = None):
@@ -445,8 +446,8 @@ class STM32Chunker:
         # Return most common peripheral if it appears frequently
         if peripheral_counts:
             max_peripheral = max(peripheral_counts, key=peripheral_counts.get)
-            # Require at least 3 mentions to be confident
-            if peripheral_counts[max_peripheral] >= 3:
+            # Require at least 2 mentions to be confident (lowered from 3)
+            if peripheral_counts[max_peripheral] >= 2:
                 return max_peripheral
 
         return None

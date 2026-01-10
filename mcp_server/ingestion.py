@@ -26,6 +26,7 @@ def convert_chunk_metadata(chunk) -> dict:
         'user_guide': DocType.USER_MANUAL,
         'programming_manual': DocType.PROGRAMMING_MANUAL,
         'errata': DocType.ERRATA,
+        'hal_guide': DocType.HAL_GUIDE,
         'unknown': DocType.GENERAL,
     }
 

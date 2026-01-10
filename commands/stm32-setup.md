@@ -20,6 +20,50 @@ Interactive setup for the STM32 documentation server. Handles dependency install
 
 When the user runs `/stm32-setup`, follow these steps IN ORDER:
 
+### Step 0: Detect Existing Agent Installations (CRITICAL - DO THIS FIRST)
+
+**IMPORTANT:** Before installing anything, you MUST check for existing agent installations in BOTH locations to avoid duplicate installs.
+
+**Directory Definitions:**
+- **LOCAL** = `./.claude/agents/` (project directory, relative to cwd)
+- **GLOBAL** = `~/.claude/agents/` (user's home directory)
+
+**Detection Steps:**
+
+1. Check LOCAL installation first:
+   ```bash
+   ls -la ./.claude/agents/*.md 2>/dev/null | head -5
+   ```
+
+2. Check GLOBAL installation:
+   ```bash
+   ls -la ~/.claude/agents/*.md 2>/dev/null | head -5
+   ```
+
+3. Look for STM32-specific agents (router.md, firmware.md, debug.md, etc.):
+   ```bash
+   ls ./.claude/agents/router.md ~/.claude/agents/router.md 2>/dev/null
+   ```
+
+**Decision Matrix:**
+
+| Local Exists? | Global Exists? | Action |
+|---------------|----------------|--------|
+| YES | (any) | Report "Agents installed locally" → Skip to Step 2 (MCP check) |
+| NO | YES | Report "Agents installed globally" → Ask if user wants local copy too |
+| NO | NO | Proceed with installation (Step 1) |
+
+**Priority Rule:** Local installation takes precedence. If agents exist locally, DO NOT install globally. This prevents cross-project contamination.
+
+**Example Output:**
+```
+Checking for existing STM32 agent installations...
+  Local (./.claude/agents/): 16 agents found ✓
+  Global (~/.claude/agents/): 0 agents found
+
+Status: Agents already installed locally. Skipping installation.
+```
+
 ### Step 1: Check and Install uvx/uv
 
 **CRITICAL: Do this FIRST before anything else.**
@@ -96,7 +140,9 @@ Only proceed here if uvx was already installed (not just installed in Step 1).
 
 ### Step 5: Show Summary
 
-Report to the user:
+Report to the user (adjust based on what was found in Step 0):
+
+**If agents found LOCALLY:**
 ```
 STM32 MCP Setup Complete
 ========================
@@ -111,7 +157,51 @@ Database:
   ✓ 13,815 document chunks indexed
   ✓ 80 source documentation files
 
-Agents Installed: 16
+Agents: 16 (LOCAL installation)
+  Location: ./.claude/agents/
+  router, triage, firmware, firmware-core, debug, bootloader,
+  bootloader-programming, peripheral-comm, peripheral-analog,
+  peripheral-graphics, power, power-management, safety,
+  safety-certification, security, hardware-design
+```
+
+**If agents found GLOBALLY (no local):**
+```
+STM32 MCP Setup Complete
+========================
+
+Dependencies:
+  ✓ uvx installed at ~/.local/bin/uvx
+
+MCP Server:
+  ✓ Connected to stm32-docs
+
+Database:
+  ✓ 13,815 document chunks indexed
+  ✓ 80 source documentation files
+
+Agents: 16 (GLOBAL installation)
+  Location: ~/.claude/agents/
+  Note: These agents are shared across all projects.
+  Tip: Copy to ./.claude/agents/ for project-local customization.
+```
+
+**If no agents found (fresh install):**
+```
+STM32 MCP Setup Complete
+========================
+
+Dependencies:
+  ✓ uvx installed at ~/.local/bin/uvx
+
+MCP Server:
+  ✓ Connected to stm32-docs
+
+Database:
+  ✓ 13,815 document chunks indexed
+  ✓ 80 source documentation files
+
+Agents Installed: 16 → ~/.claude/agents/ (global)
   router, triage, firmware, firmware-core, debug, bootloader,
   bootloader-programming, peripheral-comm, peripheral-analog,
   peripheral-graphics, power, power-management, safety,
@@ -142,6 +232,36 @@ MCP Connection Failed?
 │   └── Check GitHub access → Repo is public, should work
 └── Database empty or missing
     └── Will auto-download on first query, or run /stm32-setup --force-db
+
+Agent Detection Issues?
+├── "Agents not found" but they exist
+│   └── Check BOTH locations:
+│       ├── Local: ./.claude/agents/
+│       └── Global: ~/.claude/agents/
+├── Duplicate agents (local AND global)
+│   └── Local takes priority - this is fine, but you can remove global copies if desired
+├── Wrong agents loading
+│   └── Local agents override global - check ./.claude/agents/ first
+└── Agents installed to wrong location
+    └── Move from ~/.claude/agents/ to ./.claude/agents/ for project-local
+```
+
+## Local vs Global Agent Priority
+
+Claude Code checks for agents in this order:
+1. **Local first**: `./.claude/agents/` (project directory)
+2. **Global fallback**: `~/.claude/agents/` (user home)
+
+**Best Practice:**
+- Use LOCAL (`./.claude/agents/`) for project-specific agent customizations
+- Use GLOBAL (`~/.claude/agents/`) only when you want agents shared across ALL projects
+- If both exist, LOCAL wins - this is intentional for project isolation
+
+**To migrate from global to local:**
+```bash
+mkdir -p ./.claude/agents
+cp ~/.claude/agents/router.md ./.claude/agents/
+# ... copy other agents you want locally
 ```
 
 ## MCP Tools Used
