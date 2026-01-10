@@ -6,6 +6,12 @@ This file provides instructions for Claude Code when working with this project.
 
 The STM32 MCP Documentation Server is an MCP (Model Context Protocol) server that provides semantic search over 80+ STM32 microcontroller documentation files. It includes 16 specialized agents and auto-installs everything on first run.
 
+**Key Features:**
+- **Hybrid Search** - Combines BM25 keyword matching with vector semantic search using Reciprocal Rank Fusion (RRF)
+- **Query Expansion** - Automatic synonym expansion for STM32-specific terminology (e.g., "UART" expands to include "USART", "serial")
+- **Claude Haiku Re-ranking** - LLM-based result re-ranking via Claude Code headless mode for improved relevance
+- **nomic-embed-text-v1.5** - High-quality 768-dimension embeddings with Matryoshka representation support
+
 **Repository**: https://github.com/creativec09/stm32 (private)
 
 ## Installation
@@ -150,17 +156,131 @@ stm32-agents/
 
 - `mcp_server/server.py` - Main MCP server implementation
 - `mcp_server/config.py` - Configuration management
+- `mcp_server/query_parser.py` - Query parsing and metadata extraction
+- `mcp_server/query_expansion.py` - STM32 synonym expansion
+- `mcp_server/reranker.py` - Claude Haiku re-ranking integration
 - `storage/chroma_store.py` - ChromaDB vector store wrapper
+- `storage/bm25_index.py` - BM25 keyword index with STM32-optimized tokenizer
+- `storage/hybrid_retriever.py` - Hybrid search with RRF fusion
 - `pipeline/chunker.py` - Document chunking logic
+
+## Search Pipeline Architecture
+
+The search pipeline processes queries through multiple stages for optimal results:
+
+```
+User Query
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. QUERY PARSING (query_parser.py)                         │
+│    - Extract HAL/LL function names (HAL_UART_Transmit)     │
+│    - Detect register references (GPIOx_MODER)              │
+│    - Identify STM32 family (STM32H7)                       │
+│    - Detect peripheral keywords and user intent            │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. QUERY EXPANSION (query_expansion.py)                    │
+│    - Expand with STM32 synonyms (uart → usart, serial)     │
+│    - Add related peripheral context                        │
+│    - Normalize terminology to canonical forms              │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. HYBRID RETRIEVAL (hybrid_retriever.py)                  │
+│    ├── Vector Search (ChromaDB + nomic-embed-text-v1.5)    │
+│    │   - Semantic similarity matching                      │
+│    │   - Good for conceptual queries                       │
+│    │                                                       │
+│    └── BM25 Search (bm25_index.py)                        │
+│        - Keyword matching with STM32 tokenizer             │
+│        - Excellent for exact terms, function names         │
+│                                                           │
+│    → Reciprocal Rank Fusion (RRF) combines results        │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. RE-RANKING (reranker.py) - Optional                     │
+│    - Claude Haiku via `claude -p --model haiku`            │
+│    - STM32-specific ranking prompt                         │
+│    - Returns top-k most relevant results                   │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+Final Results
+```
+
+### When Each Component is Used
+
+| Component | When Used | Can Disable |
+|-----------|-----------|-------------|
+| Query Parsing | Always | No |
+| Query Expansion | Always | No |
+| BM25 Search | When `STM32_ENABLE_HYBRID_SEARCH=true` | Yes |
+| Vector Search | Always | No |
+| RRF Fusion | When hybrid search enabled | Yes |
+| Re-ranking | When `STM32_ENABLE_RERANKING=true` and CLI available | Yes |
+
+## Re-ranking with Claude Haiku
+
+The re-ranker uses Claude Haiku via Claude Code's headless mode to improve search result relevance.
+
+### How It Works
+
+1. **Invocation**: Uses `claude -p --model haiku` (print mode, non-interactive)
+2. **Subscription-based**: Uses your Claude subscription quota, not API credits
+3. **Max 20x Subscription**: With aggressive usage enabled (`STM32_RERANK_ALWAYS=true`), all queries are re-ranked
+4. **Fallback**: If CLI unavailable or times out, returns original ranking
+
+### Configuration
+
+```bash
+# Enable/disable re-ranking
+STM32_ENABLE_RERANKING=true
+
+# Model selection (haiku recommended for speed)
+STM32_RERANK_MODEL=haiku
+
+# Always re-rank (recommended with Max 20x subscription)
+STM32_RERANK_ALWAYS=true
+
+# Number of results to return after re-ranking
+STM32_RERANK_TOP_K=5
+```
+
+### Disabling Re-ranking
+
+Set `STM32_ENABLE_RERANKING=false` if:
+- You want faster responses without LLM re-ranking
+- The Claude CLI is not installed
+- You're on a limited subscription plan
 
 ### Environment Variables
 
 ```bash
-STM32_SERVER_MODE=local          # local, network, or hybrid
+# Server Configuration
+STM32_SERVER_MODE=local              # local, network, or hybrid
 STM32_CHROMA_DB_PATH=data/chroma_db/
 STM32_COLLECTION_NAME=stm32_docs
-STM32_EMBEDDING_MODEL=all-MiniLM-L6-v2
 STM32_LOG_LEVEL=INFO
+
+# Embedding Configuration
+STM32_EMBEDDING_MODEL=nomic-ai/nomic-embed-text-v1.5  # Default: high-quality 768-dim embeddings
+
+# Hybrid Search Configuration
+STM32_ENABLE_HYBRID_SEARCH=true      # Enable BM25 + vector hybrid search (default: true)
+STM32_RRF_K=60                       # RRF fusion constant (default: 60)
+STM32_MIN_BM25_SCORE=0.1             # Minimum BM25 score threshold
+
+# Re-ranking Configuration
+STM32_ENABLE_RERANKING=true          # Enable Claude Haiku re-ranking (default: true)
+STM32_RERANK_MODEL=haiku             # Model for re-ranking: haiku, sonnet, opus
+STM32_RERANK_ALWAYS=true             # Re-rank all queries (recommended for Max 20x subscription)
+STM32_RERANK_TOP_K=5                 # Number of results after re-ranking
 ```
 
 ### Testing
@@ -194,6 +314,31 @@ python scripts/ingest_docs.py --clear -v
 3. **Check examples** - Use `get_code_examples` for implementation guidance
 4. **Troubleshoot systematically** - Use `troubleshoot_error` for debugging help
 5. **Verify with HAL docs** - Use `lookup_hal_function` to confirm function usage
+
+## Dependencies
+
+### Core Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `chromadb` | Vector database for semantic search |
+| `sentence-transformers` | Embedding generation (nomic-embed-text-v1.5) |
+| `mcp` | Model Context Protocol server framework |
+| `pydantic-settings` | Configuration management |
+
+### Search Enhancement Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `rank-bm25` | BM25 keyword search for hybrid retrieval |
+
+### Optional Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `claude-agent-sdk` | Async re-ranking (future enhancement) |
+
+**Note**: The Claude Code CLI (`claude`) is required for re-ranking. Install via the official Claude Code installation instructions.
 
 ## Documentation
 

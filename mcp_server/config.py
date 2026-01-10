@@ -53,6 +53,7 @@ class EmbeddingModel(str, Enum):
     MPNET = "all-mpnet-base-v2"  # Best quality, 768 dimensions
     E5_SMALL = "intfloat/e5-small-v2"  # Efficient, 384 dimensions
     E5_BASE = "intfloat/e5-base-v2"  # Good balance, 768 dimensions
+    NOMIC_V15 = "nomic-ai/nomic-embed-text-v1.5"  # High quality, 768 dimensions, Matryoshka
 
 
 class Settings(BaseSettings):
@@ -248,7 +249,7 @@ class Settings(BaseSettings):
     # =========================================================================
 
     EMBEDDING_MODEL: str = Field(
-        default=EmbeddingModel.MINILM_L6.value,
+        default=EmbeddingModel.NOMIC_V15.value,
         description="Sentence transformer model for embeddings",
     )
 
@@ -267,6 +268,78 @@ class Settings(BaseSettings):
     NORMALIZE_EMBEDDINGS: bool = Field(
         default=True,
         description="Normalize embedding vectors",
+    )
+
+    # Task prefixes for nomic-embed-text models
+    EMBEDDING_TASK_PREFIX_DOC: str = Field(
+        default="search_document: ",
+        description="Task prefix for document indexing (nomic models)",
+    )
+
+    EMBEDDING_TASK_PREFIX_QUERY: str = Field(
+        default="search_query: ",
+        description="Task prefix for search queries (nomic models)",
+    )
+
+    USE_TASK_PREFIXES: bool = Field(
+        default=True,
+        description="Use task prefixes for embedding (required for nomic models)",
+    )
+
+    # =========================================================================
+    # Hybrid Search Configuration
+    # =========================================================================
+
+    ENABLE_HYBRID_SEARCH: bool = Field(
+        default=True,
+        description="Enable hybrid search combining vector and BM25",
+    )
+
+    RRF_K: int = Field(
+        default=60,
+        description="Reciprocal Rank Fusion constant k",
+        ge=1,
+        le=100,
+    )
+
+    MIN_BM25_SCORE: float = Field(
+        default=0.1,
+        description="Minimum BM25 score to include in hybrid results",
+        ge=0.0,
+        le=1.0,
+    )
+
+    HYBRID_CANDIDATE_MULTIPLIER: float = Field(
+        default=2.0,
+        description="Multiplier for candidate retrieval in hybrid search",
+        ge=1.0,
+        le=5.0,
+    )
+
+    # =========================================================================
+    # Re-ranker Configuration
+    # =========================================================================
+
+    ENABLE_RERANKING: bool = Field(
+        default=True,
+        description="Enable LLM-based re-ranking of search results",
+    )
+
+    RERANK_MODEL: str = Field(
+        default="haiku",
+        description="Model for re-ranking: haiku, sonnet, or opus",
+    )
+
+    RERANK_TOP_K: int = Field(
+        default=5,
+        description="Number of top results to return after re-ranking",
+        ge=1,
+        le=20,
+    )
+
+    RERANK_ALWAYS: bool = Field(
+        default=True,
+        description="Always re-rank results (recommended for Max 20x subscription)",
     )
 
     # =========================================================================

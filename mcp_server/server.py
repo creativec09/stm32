@@ -38,9 +38,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from mcp.server.fastmcp import FastMCP, Context
 from storage.chroma_store import STM32ChromaStore
 from storage.metadata import Peripheral, DocType
+from storage.hybrid_retriever import HybridRetriever, HybridSearchConfig
 from mcp_server.config import settings, ServerMode
 from mcp_server.resources.handlers import DocumentationResources
 from mcp_server.database_manager import DatabaseManager, DownloadProgress
+from mcp_server.query_parser import QueryParser, ParsedQuery
+from mcp_server.query_expansion import expand_query, normalize_query
+from mcp_server.reranker import ClaudeReranker, RerankerConfig
 
 # Import advanced search tools
 from mcp_server.tools.search import (
@@ -87,6 +91,269 @@ class ServerContext:
     status: str  # "ready", "setup_required", "ingesting"
     chunk_count: int
     message: str
+    enhanced_pipeline: "EnhancedSearchPipeline" = None
+
+
+class EnhancedSearchPipeline:
+    """
+    Enhanced search pipeline combining multiple retrieval strategies.
+
+    This pipeline chains together:
+    1. Query parsing - Extract filters from natural language
+    2. Query expansion - Add synonyms for better coverage
+    3. Hybrid search - BM25 + vector search with RRF fusion
+    4. Re-ranking - LLM-based relevance scoring with Haiku
+
+    The pipeline is designed for Max 20x subscription users who want
+    the highest quality search results with aggressive re-ranking.
+
+    Example:
+        >>> pipeline = EnhancedSearchPipeline(store)
+        >>> results = pipeline.search("How to configure UART DMA?", n_results=5)
+    """
+
+    def __init__(self, store: STM32ChromaStore):
+        """
+        Initialize the enhanced search pipeline.
+
+        Args:
+            store: ChromaDB store instance
+        """
+        self.store = store
+        self.query_parser = QueryParser()
+
+        # Initialize hybrid retriever with config from settings
+        hybrid_config = HybridSearchConfig(
+            enable_hybrid=settings.ENABLE_HYBRID_SEARCH,
+            rrf_k=settings.RRF_K,
+            min_bm25_score=settings.MIN_BM25_SCORE,
+            candidate_multiplier=settings.HYBRID_CANDIDATE_MULTIPLIER,
+        )
+        self.hybrid_retriever = HybridRetriever(
+            store=store,
+            config=hybrid_config
+        )
+
+        # Initialize re-ranker with config from settings
+        reranker_config = RerankerConfig(
+            enabled=settings.ENABLE_RERANKING,
+            model=settings.RERANK_MODEL,
+            top_k=settings.RERANK_TOP_K,
+            always_rerank=settings.RERANK_ALWAYS,
+        )
+        self.reranker = ClaudeReranker(reranker_config)
+
+        logger.info(
+            f"EnhancedSearchPipeline initialized: "
+            f"hybrid={settings.ENABLE_HYBRID_SEARCH}, "
+            f"reranking={settings.ENABLE_RERANKING}"
+        )
+
+    def search(
+        self,
+        query: str,
+        n_results: int = 5,
+        peripheral: Peripheral = None,
+        require_code: bool = False,
+        use_enhanced: bool = True
+    ) -> list[dict]:
+        """
+        Perform enhanced search with full pipeline.
+
+        The search pipeline:
+        1. Parse query to extract filters (peripheral, HAL function, etc.)
+        2. Expand query with synonyms for better recall
+        3. Perform hybrid search (BM25 + vector) with RRF fusion
+        4. Re-rank results with Haiku for precision
+
+        Args:
+            query: Natural language search query
+            n_results: Number of results to return
+            peripheral: Optional peripheral filter (overrides parsed)
+            require_code: Only return results with code examples
+            use_enhanced: Use enhanced pipeline (False for legacy search)
+
+        Returns:
+            List of result dictionaries with keys: id, content, metadata, score
+        """
+        if not use_enhanced:
+            # Fall back to basic vector search
+            return self.store.search(
+                query=query,
+                n_results=n_results,
+                peripheral=peripheral,
+                require_code=require_code,
+                min_score=settings.MIN_RELEVANCE_SCORE
+            )
+
+        # Step 1: Parse query for filters
+        parsed = self.query_parser.parse(query)
+        logger.debug(f"Parsed query: {parsed.to_dict()}")
+
+        # Use explicit peripheral if provided, otherwise use parsed
+        search_peripheral = peripheral
+        if search_peripheral is None and parsed.peripheral:
+            try:
+                search_peripheral = Peripheral(parsed.peripheral)
+            except ValueError:
+                pass  # Invalid peripheral, skip
+
+        # Use require_code from parse if not explicitly set
+        search_require_code = require_code or parsed.require_code
+
+        # Step 2: Expand query with synonyms
+        expanded_queries = expand_query(query, max_expansions=2)
+        search_query = expanded_queries[0]  # Use normalized version
+        logger.debug(f"Expanded queries: {expanded_queries}")
+
+        # Step 3: Perform hybrid search
+        # Fetch more candidates for re-ranking
+        candidate_count = n_results * 3 if settings.ENABLE_RERANKING else n_results
+
+        if settings.ENABLE_HYBRID_SEARCH:
+            results = self.hybrid_retriever.search(
+                query=search_query,
+                n_results=candidate_count,
+                peripheral=search_peripheral,
+                require_code=search_require_code
+            )
+        else:
+            results = self.store.search(
+                query=search_query,
+                n_results=candidate_count,
+                peripheral=search_peripheral,
+                require_code=search_require_code,
+                min_score=settings.MIN_RELEVANCE_SCORE
+            )
+
+        if not results:
+            # Fallback: try with expanded queries
+            for alt_query in expanded_queries[1:]:
+                results = self.store.search(
+                    query=alt_query,
+                    n_results=candidate_count,
+                    min_score=0.05  # Very low threshold for fallback
+                )
+                if results:
+                    break
+
+        if not results:
+            return []
+
+        # Step 4: Re-rank with Haiku
+        if settings.ENABLE_RERANKING and len(results) > 1:
+            # Override top_k for this search
+            original_top_k = self.reranker.config.top_k
+            self.reranker.config.top_k = n_results
+            try:
+                results = self.reranker.rerank_sync(query, results)
+            finally:
+                self.reranker.config.top_k = original_top_k
+        else:
+            results = results[:n_results]
+
+        logger.debug(f"Enhanced search returned {len(results)} results")
+        return results
+
+    def search_for_peripheral(
+        self,
+        peripheral: str,
+        topic: str = "",
+        n_results: int = 10,
+        use_enhanced: bool = True
+    ) -> list[dict]:
+        """
+        Search for peripheral-specific documentation.
+
+        Args:
+            peripheral: Peripheral name (e.g., "UART", "GPIO")
+            topic: Optional topic within the peripheral
+            n_results: Number of results
+            use_enhanced: Use enhanced pipeline
+
+        Returns:
+            Search results
+        """
+        # Validate peripheral
+        try:
+            periph = Peripheral(peripheral.upper())
+        except ValueError:
+            return []
+
+        # Build search query
+        query = f"{peripheral} {topic}".strip() if topic else f"{peripheral} overview configuration"
+
+        return self.search(
+            query=query,
+            n_results=n_results,
+            peripheral=periph,
+            use_enhanced=use_enhanced
+        )
+
+    def search_code_examples(
+        self,
+        topic: str,
+        peripheral: Peripheral = None,
+        n_results: int = 5,
+        use_enhanced: bool = True
+    ) -> list[dict]:
+        """
+        Search for code examples.
+
+        Args:
+            topic: Topic to find examples for
+            peripheral: Optional peripheral filter
+            n_results: Number of results
+            use_enhanced: Use enhanced pipeline
+
+        Returns:
+            Search results with code examples
+        """
+        return self.search(
+            query=f"{topic} example code",
+            n_results=n_results,
+            peripheral=peripheral,
+            require_code=True,
+            use_enhanced=use_enhanced
+        )
+
+    def search_troubleshooting(
+        self,
+        error_description: str,
+        peripheral: Peripheral = None,
+        n_results: int = 5,
+        use_enhanced: bool = True
+    ) -> list[dict]:
+        """
+        Search for troubleshooting information.
+
+        Args:
+            error_description: Description of error or issue
+            peripheral: Optional peripheral filter
+            n_results: Number of results
+            use_enhanced: Use enhanced pipeline
+
+        Returns:
+            Search results with troubleshooting info
+        """
+        # Add troubleshooting context to query
+        query = f"troubleshoot debug error {error_description}"
+
+        return self.search(
+            query=query,
+            n_results=n_results,
+            peripheral=peripheral,
+            use_enhanced=use_enhanced
+        )
+
+    def get_stats(self) -> dict:
+        """Get pipeline statistics."""
+        return {
+            "hybrid_search_enabled": settings.ENABLE_HYBRID_SEARCH,
+            "reranking_enabled": settings.ENABLE_RERANKING,
+            "rerank_model": settings.RERANK_MODEL,
+            "hybrid_retriever": self.hybrid_retriever.get_stats() if settings.ENABLE_HYBRID_SEARCH else None,
+        }
 
 
 @asynccontextmanager
@@ -150,13 +417,24 @@ async def server_lifespan(server: FastMCP):
     # Create resources handler
     resources_handler = DocumentationResources(store)
 
+    # Initialize enhanced search pipeline (only if database is ready)
+    enhanced_pipeline = None
+    if status == "ready":
+        try:
+            enhanced_pipeline = EnhancedSearchPipeline(store)
+            logger.info("Enhanced search pipeline initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize enhanced pipeline: {e}")
+            logger.info("Falling back to basic search")
+
     # Create the server context
     context = ServerContext(
         store=store,
         resources=resources_handler,
         status=status,
         chunk_count=chunk_count,
-        message=message
+        message=message,
+        enhanced_pipeline=enhanced_pipeline
     )
 
     logger.info("=" * 60)
@@ -187,6 +465,12 @@ def get_store_from_context(ctx: Context) -> STM32ChromaStore:
     """Get the store from the request context."""
     server_ctx: ServerContext = ctx.request_context.lifespan_context
     return server_ctx.store
+
+
+def get_enhanced_pipeline(ctx: Context) -> EnhancedSearchPipeline:
+    """Get the enhanced search pipeline from context (may be None)."""
+    server_ctx: ServerContext = ctx.request_context.lifespan_context
+    return server_ctx.enhanced_pipeline
 
 
 def get_context_status(ctx: Context) -> ServerContext:
@@ -315,6 +599,7 @@ def search_stm32_docs(
         return error_msg
 
     store = get_store_from_context(ctx)
+    enhanced_pipeline = get_enhanced_pipeline(ctx)
 
     # Parse peripheral filter
     periph_filter = None
@@ -328,22 +613,32 @@ def search_stm32_docs(
     # Clamp results to valid range
     num_results = max(1, min(num_results, settings.MAX_SEARCH_RESULTS))
 
-    # Execute search with configured threshold
-    results = store.search(
-        query=query,
-        n_results=num_results,
-        peripheral=periph_filter,
-        require_code=require_code,
-        min_score=settings.MIN_RELEVANCE_SCORE
-    )
-
-    # Fallback: if no results with filters, try broader search
-    if not results and (periph_filter or require_code):
+    # Use enhanced pipeline if available
+    if enhanced_pipeline is not None:
+        results = enhanced_pipeline.search(
+            query=query,
+            n_results=num_results,
+            peripheral=periph_filter,
+            require_code=require_code,
+            use_enhanced=True
+        )
+    else:
+        # Fallback to basic vector search
         results = store.search(
             query=query,
             n_results=num_results,
-            min_score=0.05  # Very low threshold for fallback
+            peripheral=periph_filter,
+            require_code=require_code,
+            min_score=settings.MIN_RELEVANCE_SCORE
         )
+
+        # Fallback: if no results with filters, try broader search
+        if not results and (periph_filter or require_code):
+            results = store.search(
+                query=query,
+                n_results=num_results,
+                min_score=0.05  # Very low threshold for fallback
+            )
 
     if not results:
         return f"No documentation found for query: {query}. Try rephrasing your search or use broader terms."
@@ -404,6 +699,7 @@ def get_peripheral_docs(
         return error_msg
 
     store = get_store_from_context(ctx)
+    enhanced_pipeline = get_enhanced_pipeline(ctx)
 
     # Validate peripheral
     try:
@@ -415,8 +711,17 @@ def get_peripheral_docs(
     # Build search query
     query = f"{peripheral} {topic}".strip() if topic else f"{peripheral} overview configuration"
 
-    # Search with peripheral filter
-    results = store.search_by_peripheral(periph, query, n_results=10)
+    # Use enhanced pipeline if available
+    if enhanced_pipeline is not None:
+        results = enhanced_pipeline.search_for_peripheral(
+            peripheral=peripheral,
+            topic=topic,
+            n_results=10,
+            use_enhanced=True
+        )
+    else:
+        # Fallback to basic search with peripheral filter
+        results = store.search_by_peripheral(periph, query, n_results=10)
 
     if not results:
         return f"No documentation found for peripheral: {peripheral}"
@@ -469,6 +774,7 @@ def get_code_examples(
         return error_msg
 
     store = get_store_from_context(ctx)
+    enhanced_pipeline = get_enhanced_pipeline(ctx)
 
     # Parse optional peripheral filter
     periph_filter = None
@@ -481,21 +787,30 @@ def get_code_examples(
     # Clamp number of examples
     num_examples = max(1, min(num_examples, 10))
 
-    # Search for code examples
-    results = store.get_code_examples(
-        topic=topic,
-        peripheral=periph_filter,
-        n_results=num_examples
-    )
-
-    # Fallback: broader search if no code examples found
-    if not results:
-        results = store.search(
-            query=topic,
-            n_results=num_examples,
+    # Use enhanced pipeline if available
+    if enhanced_pipeline is not None:
+        results = enhanced_pipeline.search_code_examples(
+            topic=topic,
             peripheral=periph_filter,
-            min_score=0.05  # Very low threshold for fallback
+            n_results=num_examples,
+            use_enhanced=True
         )
+    else:
+        # Fallback to basic code example search
+        results = store.get_code_examples(
+            topic=topic,
+            peripheral=periph_filter,
+            n_results=num_examples
+        )
+
+        # Fallback: broader search if no code examples found
+        if not results:
+            results = store.search(
+                query=topic,
+                n_results=num_examples,
+                peripheral=periph_filter,
+                min_score=0.05  # Very low threshold for fallback
+            )
 
     if not results:
         return f"No code examples found for: {topic}. Try broader search terms like the peripheral name."
@@ -714,6 +1029,44 @@ def troubleshoot_error(
     ready, error_msg = check_database_ready(ctx)
     if not ready:
         return error_msg
+
+    enhanced_pipeline = get_enhanced_pipeline(ctx)
+
+    # Parse optional peripheral filter
+    periph_filter = None
+    if peripheral:
+        try:
+            periph_filter = Peripheral(peripheral.upper())
+        except ValueError:
+            logger.warning(f"Unknown peripheral filter: {peripheral}")
+
+    # Use enhanced pipeline if available
+    if enhanced_pipeline is not None:
+        results = enhanced_pipeline.search_troubleshooting(
+            error_description=error_description,
+            peripheral=periph_filter,
+            n_results=5,
+            use_enhanced=True
+        )
+
+        if results:
+            # Format output
+            output = [f"# Troubleshooting: {error_description}\n"]
+
+            for i, r in enumerate(results, 1):
+                meta = r['metadata']
+                output.append(f"## Solution {i}")
+                output.append(f"*Source: {meta.get('source_file', 'Unknown')}*")
+                if meta.get('peripheral'):
+                    output.append(f"*Peripheral: {meta['peripheral']}*")
+                output.append("")
+                output.append(r['content'])
+                output.append("\n---\n")
+
+            logger.info(f"Found {len(results)} troubleshooting results for '{error_description}'")
+            return "\n".join(output)
+
+    # Fallback to basic search_error_solution
     return search_error_solution(get_store_from_context(ctx), error_description, peripheral or None)
 
 
