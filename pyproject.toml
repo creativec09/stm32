@@ -75,6 +75,9 @@ dependencies = [
 
     # Hybrid search (BM25)
     "rank-bm25>=0.2.2",
+
+    # MCP proxy for stdio-to-SSE bridging
+    "mcp-proxy>=0.11.0",
 ]
 
 [project.optional-dependencies]
@@ -112,6 +115,9 @@ docs = [
 [project.scripts]
 # MCP server entry point - used by uvx for private distribution
 stm32-mcp-docs = "mcp_server.server:main"
+
+# MCP daemon wrapper - starts persistent daemon + bridges via mcp-proxy
+stm32-mcp-daemon = "scripts.mcp_daemon:main"
 
 # Primary setup command - the main entry point for new users
 stm32-setup = "scripts.setup:main"

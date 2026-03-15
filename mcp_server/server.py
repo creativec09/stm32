@@ -1644,12 +1644,17 @@ def run_network():
             }
         })
 
+    async def handle_message(request):
+        """Handle POST messages from MCP clients (SSE session messages)."""
+        await sse.handle_post_message(request.scope, request.receive, request._send)
+
     # Create Starlette app with routes
     app = Starlette(
         routes=[
             Route("/", server_info),
             Route("/health", health_check),
             Route("/sse", handle_sse),
+            Route("/messages", handle_message, methods=["POST"]),
         ]
     )
 

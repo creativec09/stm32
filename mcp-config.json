@@ -3,7 +3,7 @@
     "command": "bash",
     "args": [
       "-c",
-      "export PATH=\"$HOME/.local/bin:$PATH\" && (command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q) && uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-docs"
+      "export PATH=\"$HOME/.local/bin:$PATH\" && (command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q) && uvx --from git+https://github.com/creativec09/stm32.git stm32-mcp-daemon"
     ]
   }
 }
