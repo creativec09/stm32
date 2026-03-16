@@ -46,6 +46,7 @@ dependencies = [
     # Vector Store & Embeddings
     "chromadb>=0.4.22,<1.0.0",
     "sentence-transformers>=2.2.2,<3.0.0",
+    "einops>=0.7.0",  # Required by nomic-embed-text-v1.5 model
 
     # Data Validation
     "pydantic>=2.5.0,<3.0.0",

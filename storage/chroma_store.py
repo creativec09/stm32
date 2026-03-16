@@ -86,7 +86,7 @@ class STM32ChromaStore:
         """Lazy load the embedding model."""
         if self._embedding_model is None:
             logger.info(f"Loading embedding model: {self.embedding_model_name}")
-            self._embedding_model = SentenceTransformer(self.embedding_model_name)
+            self._embedding_model = SentenceTransformer(self.embedding_model_name, trust_remote_code=True)
         return self._embedding_model
 
     def _generate_embeddings(self, texts: list[str]) -> list[list[float]]:
