@@ -13,7 +13,7 @@ Example .env file:
     STM32_SERVER_MODE=network
     STM32_HOST=0.0.0.0
     STM32_PORT=8765
-    VOYAGE_API_KEY=pa-...  # For indexing with voyage-4-large
+    STM32_VOYAGE_API_KEY=pa-...  # For Voyage AI embeddings (uses STM32_ prefix)
 """
 
 from __future__ import annotations

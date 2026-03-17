@@ -617,7 +617,7 @@ if __name__ == "__main__":
         print("\n1. Initializing store...")
         import os
         from mcp_server.embeddings import create_provider
-        provider = create_provider(api_key=os.environ["VOYAGE_API_KEY"])
+        provider = create_provider(api_key=os.environ.get("STM32_VOYAGE_API_KEY", os.environ.get("VOYAGE_API_KEY", "")))
         store = STM32ChromaStore(Path(tmpdir), embedding_provider=provider)
 
         # Create test metadata

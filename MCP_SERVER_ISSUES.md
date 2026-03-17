@@ -61,7 +61,7 @@ The ChromaDB collection was built with MiniLM (384-dim) during initial indexing.
 
 ### Migration plan
 1. Replace `SentenceTransformer` with Voyage AI Python SDK (`voyageai`)
-2. Add `VOYAGE_API_KEY` to config (env var or `.env` file)
+2. Add `STM32_VOYAGE_API_KEY` to config (env var, `.env` file, or MCP config `env` field)
 3. Update `ChromaStore._generate_embeddings()` to call Voyage API
 4. Update `pyproject.toml` dependencies: remove `sentence-transformers`, `einops`; add `voyageai`
 5. Delete all ChromaDB data (dimension will change)

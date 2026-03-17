@@ -122,7 +122,7 @@ def create_provider(
     """
     if not api_key:
         raise ValueError(
-            "VOYAGE_API_KEY is required. Set it in .env or as environment variable."
+            "STM32_VOYAGE_API_KEY is required. Set it in .env or as environment variable (uses STM32_ prefix)."
         )
     return VoyageAPIProvider(
         api_key=api_key,
