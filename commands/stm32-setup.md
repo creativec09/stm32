@@ -64,7 +64,36 @@ Checking for existing STM32 agent installations...
 Status: Agents already installed locally. Skipping installation.
 ```
 
-### Step 1: Check and Install uvx/uv
+### Step 1: Check Voyage AI API Key
+
+**CRITICAL: The STM32 MCP server requires a Voyage AI API key for semantic search.**
+
+1. Check if the key is already configured:
+   ```bash
+   echo $VOYAGE_API_KEY $STM32_VOYAGE_API_KEY
+   ```
+
+2. If neither is set, tell the user:
+   ```
+   ⚠️  Voyage AI API Key Required
+
+   The STM32 documentation server uses Voyage AI embeddings for search.
+   You need a free API key to use it.
+
+   1. Sign up at https://dash.voyageai.com/ (free tier includes 200M tokens)
+   2. Create an API key
+   3. Add it to your project's .env file:
+
+      echo 'STM32_VOYAGE_API_KEY=your-key-here' >> .env
+
+   Or set it as an environment variable:
+
+      export STM32_VOYAGE_API_KEY=your-key-here
+   ```
+
+3. Wait for the user to provide their key before continuing.
+
+### Step 2: Check and Install uvx/uv
 
 **CRITICAL: Do this FIRST before anything else.**
 
@@ -109,9 +138,9 @@ Status: Agents already installed locally. Skipping installation.
    ```
    Then STOP - don't continue to other steps until they restart.
 
-### Step 2: Check MCP Server Connection
+### Step 3: Check MCP Server Connection
 
-Only proceed here if uvx was already installed (not just installed in Step 1).
+Only proceed here if uvx was already installed (not just installed in Step 2).
 
 1. Try to read the `stm32://status` resource
 2. If connection fails with error, diagnose:
@@ -123,7 +152,7 @@ Only proceed here if uvx was already installed (not just installed in Step 1).
    - The database will auto-download on first query
    - Or user can wait for it to initialize
 
-### Step 3: Verify Database
+### Step 4: Verify Database
 
 1. Call `mcp__stm32-docs__list_peripherals()` to verify the database works
 2. If it returns results, report:
@@ -131,14 +160,14 @@ Only proceed here if uvx was already installed (not just installed in Step 1).
    - Number of chunks indexed
 3. If it fails, the database may still be downloading - tell user to wait or try again
 
-### Step 4: Update Project CLAUDE.md
+### Step 5: Update Project CLAUDE.md
 
 1. Check if a CLAUDE.md exists in the current project directory
 2. If it exists, check for existing STM32 section (look for "## STM32 Development Instructions")
 3. If no STM32 section exists, append the template content below
 4. If it doesn't exist, create it with STM32 instructions
 
-### Step 5: Show Summary
+### Step 6: Show Summary
 
 Report to the user (adjust based on what was found in Step 0):
 
@@ -154,8 +183,9 @@ MCP Server:
   ✓ Connected to stm32-docs
 
 Database:
-  ✓ 13,815 document chunks indexed
+  ✓ 13,724 document chunks indexed (Voyage 4 embeddings)
   ✓ 80 source documentation files
+  ✓ Voyage API key configured
 
 Agents: 16 (LOCAL installation)
   Location: ./.claude/agents/
@@ -177,8 +207,9 @@ MCP Server:
   ✓ Connected to stm32-docs
 
 Database:
-  ✓ 13,815 document chunks indexed
+  ✓ 13,724 document chunks indexed (Voyage 4 embeddings)
   ✓ 80 source documentation files
+  ✓ Voyage API key configured
 
 Agents: 16 (GLOBAL installation)
   Location: ~/.claude/agents/
@@ -198,8 +229,9 @@ MCP Server:
   ✓ Connected to stm32-docs
 
 Database:
-  ✓ 13,815 document chunks indexed
+  ✓ 13,724 document chunks indexed (Voyage 4 embeddings)
   ✓ 80 source documentation files
+  ✓ Voyage API key configured
 
 Agents Installed: 16 → ~/.claude/agents/ (global)
   router, triage, firmware, firmware-core, debug, bootloader,
@@ -223,6 +255,14 @@ Quick Start:
 If something fails, follow this logic:
 
 ```
+Search/Query Failures?
+├── "VOYAGE_API_KEY is required"
+│   └── User needs to set STM32_VOYAGE_API_KEY in .env or environment
+├── "401 Unauthorized" from Voyage API
+│   └── API key is invalid or expired → Get new key at dash.voyageai.com
+└── "Embedding dimension X does not match collection dimensionality Y"
+    └── Database was built with different model → Run /stm32-setup --force-db
+
 MCP Connection Failed?
 ├── "spawn uvx ENOENT" or "uvx not found"
 │   └── Install uvx (Step 1) → Tell user to restart Claude Code
