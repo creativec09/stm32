@@ -183,7 +183,6 @@ def check_chromadb_populated() -> Tuple[bool, int]:
         store = STM32ChromaStore(
             persist_dir=settings.CHROMA_DB_PATH,
             collection_name=settings.COLLECTION_NAME,
-            embedding_model=settings.EMBEDDING_MODEL
         )
         count = store.count()
         return count > 0, count
@@ -473,7 +472,7 @@ def verify_installation() -> bool:
 
     # Check Python packages
     print("\n  Checking Python packages...")
-    required_packages = ['mcp', 'chromadb', 'sentence_transformers', 'pydantic']
+    required_packages = ['mcp', 'chromadb', 'voyageai', 'pydantic']
     for pkg in required_packages:
         try:
             __import__(pkg.replace('-', '_'))

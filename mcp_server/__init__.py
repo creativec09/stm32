@@ -83,7 +83,7 @@ from mcp_server.config import (
     settings,
     ServerMode,
     LogLevel,
-    EmbeddingModel,
+    EmbeddingProvider,
     VALID_PERIPHERALS,
     VALID_DOC_TYPES,
     STM32_FAMILIES,

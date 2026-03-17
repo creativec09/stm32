@@ -46,7 +46,6 @@ def get_db_stats(db_path: Path) -> dict:
         store = STM32ChromaStore(
             persist_dir=db_path,
             collection_name=settings.COLLECTION_NAME,
-            embedding_model=settings.EMBEDDING_MODEL
         )
 
         return {
@@ -151,7 +150,7 @@ def package_database(
         "sha256": sha256,
         "chunks": stats.get("chunks", 0),
         "sources": stats.get("sources", 0),
-        "embedding_model": "all-MiniLM-L6-v2",
+        "embedding_provider": "voyage-4-large",
         "peripherals": stats.get("peripherals", {}),
         "doc_types": stats.get("doc_types", {})
     }

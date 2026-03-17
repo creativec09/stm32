@@ -392,7 +392,7 @@ class TestResourceHandlers:
         store.get_stats.return_value = {
             'total_chunks': 100,
             'collection_name': 'stm32_docs',
-            'embedding_model': 'all-MiniLM-L6-v2'
+            'embedding_provider': 'VoyageAPIProvider'
         }
         store.get_peripheral_distribution.return_value = {'GPIO': 30, 'UART': 25}
         store.get_doc_type_distribution.return_value = {'hal_guide': 50, 'reference_manual': 30}

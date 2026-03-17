@@ -142,7 +142,6 @@ class DatabaseManager:
             store = STM32ChromaStore(
                 persist_dir=self.db_path,
                 collection_name="stm32_docs",
-                embedding_model="all-MiniLM-L6-v2"
             )
             return store.count()
         except Exception as e:
@@ -418,7 +417,6 @@ class DatabaseManager:
             store = STM32ChromaStore(
                 persist_dir=self.db_path,
                 collection_name="stm32_docs",
-                embedding_model="all-MiniLM-L6-v2"
             )
 
             # Progress wrapper

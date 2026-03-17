@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mcp_server.config import settings
+from mcp_server.embeddings import create_provider
 from storage.chroma_store import STM32ChromaStore
 from storage.metadata import Peripheral
 
@@ -101,10 +102,16 @@ def search(
 
     # Initialize store
     try:
+        provider = create_provider(
+            api_key=settings.VOYAGE_API_KEY,
+            index_model=settings.VOYAGE_INDEX_MODEL,
+            query_model=settings.VOYAGE_QUERY_MODEL,
+            dimensions=settings.EMBEDDING_DIMENSIONS,
+        )
         store = STM32ChromaStore(
             persist_dir=settings.CHROMA_DB_PATH,
             collection_name=settings.COLLECTION_NAME,
-            embedding_model=settings.EMBEDDING_MODEL
+            embedding_provider=provider,
         )
     except Exception as e:
         if RICH_AVAILABLE:
@@ -250,7 +257,6 @@ Examples:
             store = STM32ChromaStore(
                 persist_dir=settings.CHROMA_DB_PATH,
                 collection_name=settings.COLLECTION_NAME,
-                embedding_model=settings.EMBEDDING_MODEL
             )
             stats = store.get_stats()
             periph_dist = store.get_peripheral_distribution()

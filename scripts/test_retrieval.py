@@ -11,6 +11,7 @@ from rich.panel import Panel
 from storage.chroma_store import STM32ChromaStore
 from storage.metadata import Peripheral
 from mcp_server.config import settings
+from mcp_server.embeddings import create_provider
 
 console = Console()
 
@@ -36,9 +37,16 @@ def main():
         "[bold blue]STM32 Documentation Retrieval Test[/bold blue]"
     ))
 
+    provider = create_provider(
+        api_key=settings.VOYAGE_API_KEY,
+        index_model=settings.VOYAGE_INDEX_MODEL,
+        query_model=settings.VOYAGE_QUERY_MODEL,
+        dimensions=settings.EMBEDDING_DIMENSIONS,
+    )
     store = STM32ChromaStore(
         persist_dir=settings.CHROMA_DB_PATH,
-        collection_name=settings.COLLECTION_NAME
+        collection_name=settings.COLLECTION_NAME,
+        embedding_provider=provider,
     )
 
     # Check if data exists

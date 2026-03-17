@@ -395,7 +395,7 @@ class TestConfigurationValidation:
         # Check required settings exist
         assert hasattr(settings, 'CHUNK_SIZE')
         assert hasattr(settings, 'CHUNK_OVERLAP')
-        assert hasattr(settings, 'EMBEDDING_MODEL')
+        assert hasattr(settings, 'EMBEDDING_DIMENSIONS')
 
         # Check settings are reasonable
         assert settings.CHUNK_SIZE > 0

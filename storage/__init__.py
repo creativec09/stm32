@@ -27,7 +27,6 @@ Usage:
     store = STM32ChromaStore(
         persist_dir=Path("./data/chroma_db"),
         collection_name="stm32_docs",
-        embedding_model="nomic-ai/nomic-embed-text-v1.5"
     )
 
     # Hybrid search (BM25 + vector with RRF fusion)

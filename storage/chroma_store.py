@@ -11,7 +11,6 @@ from typing import Optional, Union
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from sentence_transformers import SentenceTransformer
 
 from .metadata import ChunkMetadataSchema, DocType, Peripheral, ContentType
 
@@ -26,11 +25,14 @@ class STM32ChromaStore:
     Provides methods for adding, searching, and managing STM32 documentation chunks
     with rich metadata filtering and semantic search capabilities.
 
+    Uses an EmbeddingProvider (from mcp_server.embeddings) for generating embeddings,
+    supporting Voyage 4 asymmetric retrieval (index with voyage-4-large, query with
+    voyage-4-nano).
+
     Example:
-        >>> store = STM32ChromaStore(Path("./data/chroma"))
-        >>> store.add_chunks([
-        ...     ("chunk_001", "GPIO configuration text", metadata.to_chroma_metadata())
-        ... ])
+        >>> from mcp_server.embeddings import VoyageNanoLocalProvider
+        >>> provider = VoyageNanoLocalProvider()
+        >>> store = STM32ChromaStore(Path("./data/chroma"), embedding_provider=provider)
         >>> results = store.search("How to configure GPIO?", peripheral=Peripheral.GPIO)
     """
 
@@ -38,7 +40,7 @@ class STM32ChromaStore:
         self,
         persist_dir: Path,
         collection_name: str = "stm32_docs",
-        embedding_model: str = "all-MiniLM-L6-v2",
+        embedding_provider=None,
         distance_metric: str = "cosine"
     ):
         """
@@ -47,12 +49,12 @@ class STM32ChromaStore:
         Args:
             persist_dir: Directory for persistent storage
             collection_name: Name of the ChromaDB collection
-            embedding_model: Sentence transformer model name
+            embedding_provider: EmbeddingProvider instance for generating embeddings
             distance_metric: Distance metric for similarity search (cosine, l2, ip)
         """
         self.persist_dir = persist_dir
         self.collection_name = collection_name
-        self.embedding_model_name = embedding_model
+        self._provider = embedding_provider
         self.distance_metric = distance_metric
 
         # Ensure persist directory exists
@@ -67,36 +69,34 @@ class STM32ChromaStore:
             )
         )
 
-        # Lazy load embedding model (loaded on first use)
-        self._embedding_model: Optional[SentenceTransformer] = None
-
         # Get or create collection
         self._collection = self._client.get_or_create_collection(
             name=self.collection_name,
             metadata={"hnsw:space": self.distance_metric}
         )
 
+        provider_name = type(self._provider).__name__ if self._provider else "None"
         logger.info(
             f"Initialized STM32ChromaStore at {self.persist_dir} "
-            f"with collection '{self.collection_name}'"
+            f"with collection '{self.collection_name}', provider={provider_name}"
         )
 
     @property
-    def embedding_model(self) -> SentenceTransformer:
-        """Lazy load the embedding model."""
-        if self._embedding_model is None:
-            logger.info(f"Loading embedding model: {self.embedding_model_name}")
-            self._embedding_model = SentenceTransformer(self.embedding_model_name, trust_remote_code=True)
-        return self._embedding_model
+    def embedding_model_name(self) -> str:
+        """Return provider class name for stats/logging."""
+        return type(self._provider).__name__ if self._provider else "none"
 
     def _generate_embeddings(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for a list of texts."""
-        embeddings = self.embedding_model.encode(
-            texts,
-            show_progress_bar=len(texts) > 10,
-            convert_to_numpy=True
-        )
-        return embeddings.tolist()
+        """Generate embeddings for a list of document texts."""
+        if self._provider is None:
+            raise RuntimeError("No embedding provider configured")
+        return self._provider.embed_documents(texts)
+
+    def _generate_query_embedding(self, text: str) -> list[float]:
+        """Generate embedding for a single query text."""
+        if self._provider is None:
+            raise RuntimeError("No embedding provider configured")
+        return self._provider.embed_query(text)
 
     # Maximum batch size for ChromaDB operations
     MAX_BATCH_SIZE = 5000  # ChromaDB limit is 5461, use 5000 for safety margin
@@ -125,6 +125,12 @@ class STM32ChromaStore:
             2
         """
         if not chunks:
+            return 0
+
+        # Filter out chunks with empty content (Voyage API rejects empty strings)
+        chunks = [(id_, doc, meta) for id_, doc, meta in chunks if doc and doc.strip()]
+        if not chunks:
+            logger.warning("All chunks were empty after filtering")
             return 0
 
         total_added = 0
@@ -208,7 +214,7 @@ class STM32ChromaStore:
             where_filter = {"$and": filter_conditions}
 
         # Generate query embedding
-        query_embedding = self._generate_embeddings([query])[0]
+        query_embedding = self._generate_query_embedding(query)
 
         # Execute search
         try:
@@ -475,7 +481,7 @@ class STM32ChromaStore:
                 "total_chunks": count,
                 "collection_name": self.collection_name,
                 "persist_dir": str(self.persist_dir),
-                "embedding_model": self.embedding_model_name,
+                "embedding_provider": self.embedding_model_name,
                 "distance_metric": self.distance_metric
             }
         except Exception as e:
@@ -607,9 +613,12 @@ if __name__ == "__main__":
     print("=" * 60)
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Initialize store
+        # Initialize store with Voyage API provider
         print("\n1. Initializing store...")
-        store = STM32ChromaStore(Path(tmpdir))
+        import os
+        from mcp_server.embeddings import create_provider
+        provider = create_provider(api_key=os.environ["VOYAGE_API_KEY"])
+        store = STM32ChromaStore(Path(tmpdir), embedding_provider=provider)
 
         # Create test metadata
         print("\n2. Creating test chunk...")
@@ -653,7 +662,7 @@ if __name__ == "__main__":
         stats = store.get_stats()
         print(f"Total chunks: {stats['total_chunks']}")
         print(f"Collection: {stats['collection_name']}")
-        print(f"Embedding model: {stats['embedding_model']}")
+        print(f"Embedding provider: {stats['embedding_provider']}")
 
         # Get distributions
         print("\n7. Getting peripheral distribution...")

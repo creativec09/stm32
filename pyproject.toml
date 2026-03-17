@@ -1,6 +1,6 @@
 [project]
 name = "stm32-mcp-docs"
-version = "0.1.0"
+version = "1.3.0"
 description = "MCP server for STM32 documentation retrieval with semantic search and Tailscale network support"
 readme = "README.md"
 license = {text = "MIT"}
@@ -45,8 +45,7 @@ dependencies = [
 
     # Vector Store & Embeddings
     "chromadb>=0.4.22,<1.0.0",
-    "sentence-transformers>=2.2.2,<3.0.0",
-    "einops>=0.7.0",  # Required by nomic-embed-text-v1.5 model
+    "voyageai>=0.3.0",
 
     # Data Validation
     "pydantic>=2.5.0,<3.0.0",
@@ -249,7 +248,7 @@ exclude = [
 [[tool.mypy.overrides]]
 module = [
     "chromadb.*",
-    "sentence_transformers.*",
+    "voyageai.*",
     "tiktoken.*",
     "rich.*",
     "typer.*",

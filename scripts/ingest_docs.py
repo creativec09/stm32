@@ -28,6 +28,7 @@ from pipeline.chunker import STM32Chunker, ChunkingConfig
 from storage.chroma_store import STM32ChromaStore
 from storage.metadata import ChunkMetadataSchema, DocType, Peripheral, ContentType
 from mcp_server.config import settings
+from mcp_server.embeddings import create_provider
 
 console = Console()
 
@@ -120,10 +121,22 @@ def ingest_documents(
         min_chunk_size=settings.MIN_CHUNK_SIZE
     ))
 
+    # Use voyage-4-large for indexing (best quality)
+    embedding_provider = create_provider(
+        api_key=settings.VOYAGE_API_KEY,
+        index_model=settings.VOYAGE_INDEX_MODEL,
+        query_model=settings.VOYAGE_QUERY_MODEL,
+        dimensions=settings.EMBEDDING_DIMENSIONS,
+    )
+    console.print(
+        f"Embedding: [cyan]{settings.VOYAGE_INDEX_MODEL}[/cyan] "
+        f"({settings.EMBEDDING_DIMENSIONS}d)"
+    )
+
     store = STM32ChromaStore(
         persist_dir=settings.CHROMA_DB_PATH,
         collection_name=settings.COLLECTION_NAME,
-        embedding_model=settings.EMBEDDING_MODEL
+        embedding_provider=embedding_provider,
     )
 
     if clear_existing:
@@ -277,7 +290,6 @@ def main():
         action="store_true",
         help="Verbose output"
     )
-
     args = parser.parse_args()
 
     source_dir = args.source_dir or settings.RAW_DOCS_DIR

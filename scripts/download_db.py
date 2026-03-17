@@ -310,7 +310,6 @@ def download_database(version: Optional[str] = None, force: bool = False) -> boo
         store = STM32ChromaStore(
             persist_dir=settings.CHROMA_DB_PATH,
             collection_name=settings.COLLECTION_NAME,
-            embedding_model=settings.EMBEDDING_MODEL
         )
         count = store.count()
         print_success(f"Database contains {count} document chunks")

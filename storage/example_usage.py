@@ -240,7 +240,7 @@ def example_statistics_and_management():
         stats = store.get_stats()
         print(f"   Total chunks: {stats['total_chunks']}")
         print(f"   Collection: {stats['collection_name']}")
-        print(f"   Model: {stats['embedding_model']}")
+        print(f"   Model: {stats['embedding_provider']}")
 
         # Peripheral distribution
         print("\n2. Peripheral distribution:")

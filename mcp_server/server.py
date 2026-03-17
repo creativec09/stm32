@@ -40,6 +40,7 @@ from storage.chroma_store import STM32ChromaStore
 from storage.metadata import Peripheral, DocType
 from storage.hybrid_retriever import HybridRetriever, HybridSearchConfig
 from mcp_server.config import settings, ServerMode
+from mcp_server.embeddings import create_provider
 from mcp_server.resources.handlers import DocumentationResources
 from mcp_server.database_manager import DatabaseManager, DownloadProgress
 from mcp_server.query_parser import QueryParser, ParsedQuery
@@ -395,12 +396,24 @@ async def server_lifespan(server: FastMCP):
     logger.info("Checking database status...")
     db_info = db_manager.ensure_database()
 
+    # Initialize embedding provider (Voyage 4 API)
+    logger.info(
+        f"Creating embedding provider: index={settings.VOYAGE_INDEX_MODEL}, "
+        f"query={settings.VOYAGE_QUERY_MODEL}"
+    )
+    embedding_provider = create_provider(
+        api_key=settings.VOYAGE_API_KEY,
+        index_model=settings.VOYAGE_INDEX_MODEL,
+        query_model=settings.VOYAGE_QUERY_MODEL,
+        dimensions=settings.EMBEDDING_DIMENSIONS,
+    )
+
     # Initialize the ChromaDB store
     logger.info(f"Initializing ChromaDB store at {settings.CHROMA_DB_PATH}")
     store = STM32ChromaStore(
         persist_dir=settings.CHROMA_DB_PATH,
         collection_name=settings.COLLECTION_NAME,
-        embedding_model=settings.EMBEDDING_MODEL
+        embedding_provider=embedding_provider,
     )
 
     chunk_count = store.count()
@@ -556,7 +569,7 @@ def get_health_status(ctx: Context) -> str:
         "version": settings.SERVER_VERSION,
         "mode": settings.SERVER_MODE.value,
         "chunks_indexed": server_ctx.chunk_count,
-        "embedding_model": settings.EMBEDDING_MODEL,
+        "embedding_provider": settings.EMBEDDING_PROVIDER_TYPE,
         "database_status": server_ctx.status
     }, indent=2)
 

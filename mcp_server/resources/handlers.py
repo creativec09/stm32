@@ -152,7 +152,7 @@ class DocumentationResources:
             "peripheral_distribution": periph_dist,
             "document_type_distribution": doc_dist,
             "collection_name": stats.get('collection_name', 'stm32_docs'),
-            "embedding_model": stats.get('embedding_model', 'unknown'),
+            "embedding_provider": stats.get('embedding_provider', 'unknown'),
         }, indent=2)
 
     def list_sources(self) -> str:

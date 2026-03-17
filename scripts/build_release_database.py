@@ -55,6 +55,7 @@ from rich.table import Table
 
 # Import project modules
 from mcp_server.config import settings
+from mcp_server.embeddings import create_provider
 from mcp_server.ingestion import run_ingestion
 from storage.chroma_store import STM32ChromaStore
 
@@ -66,7 +67,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "release-artifacts"
 ARCHIVE_NAME = "chromadb-stm32-docs.tar.gz"
 MANIFEST_NAME = "chromadb-manifest.json"
 BUILD_INFO_NAME = "build-info.json"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "voyage-4-large"
 
 # Validation thresholds
 MIN_EXPECTED_CHUNKS = 12000
@@ -113,7 +114,7 @@ class DatabaseBuilder:
             "version": version,
             "chunks": 0,
             "source_files": 0,
-            "embedding_model": EMBEDDING_MODEL,
+            "embedding_provider": EMBEDDING_MODEL,
             "build_timestamp": "",
             "sha256": "",
         }
@@ -209,10 +210,16 @@ class DatabaseBuilder:
         self.db_path.mkdir(parents=True, exist_ok=True)
 
         # Initialize store
+        provider = create_provider(
+            api_key=settings.VOYAGE_API_KEY,
+            index_model=settings.VOYAGE_INDEX_MODEL,
+            query_model=settings.VOYAGE_QUERY_MODEL,
+            dimensions=settings.EMBEDDING_DIMENSIONS,
+        )
         store = STM32ChromaStore(
             persist_dir=self.db_path,
             collection_name=settings.COLLECTION_NAME,
-            embedding_model=EMBEDDING_MODEL,
+            embedding_provider=provider,
         )
 
         # Clear if clean build
@@ -371,7 +378,7 @@ class DatabaseBuilder:
             "version": self.stats["version"],
             "chunks": self.stats["chunks"],
             "sha256": self.stats["sha256"],
-            "embedding_model": self.stats["embedding_model"],
+            "embedding_provider": self.stats["embedding_provider"],
             "build_timestamp": self.stats["build_timestamp"],
             "source_files": self.stats["source_files"],
         }
@@ -418,7 +425,7 @@ class DatabaseBuilder:
         table.add_row("Version", self.stats["version"])
         table.add_row("Chunks", str(self.stats["chunks"]))
         table.add_row("Source Files", str(self.stats["source_files"]))
-        table.add_row("Embedding Model", self.stats["embedding_model"])
+        table.add_row("Embedding Provider", self.stats["embedding_provider"])
         table.add_row("SHA256", self.stats["sha256"][:16] + "...")
         table.add_row("Build Time", self.stats["build_timestamp"])
 

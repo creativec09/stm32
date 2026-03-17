@@ -194,7 +194,6 @@ def validate_setup(settings):
         store = STM32ChromaStore(
             persist_dir=settings.CHROMA_DB_PATH,
             collection_name=settings.COLLECTION_NAME,
-            embedding_model=settings.EMBEDDING_MODEL
         )
         count = store.count()
 
@@ -228,11 +227,11 @@ def validate_setup(settings):
         errors.append("chromadb package not installed. Run: pip install chromadb")
 
     try:
-        import sentence_transformers
-        print(f"   [OK] sentence-transformers package installed")
+        import voyageai
+        print(f"   [OK] voyageai package installed")
     except ImportError:
-        print("   [ERROR] sentence-transformers package not installed")
-        errors.append("sentence-transformers not installed. Run: pip install sentence-transformers")
+        print("   [ERROR] voyageai package not installed")
+        errors.append("voyageai not installed. Run: pip install voyageai")
 
     # Network mode checks
     if settings.is_network_enabled():

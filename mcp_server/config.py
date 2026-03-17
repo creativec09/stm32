@@ -13,7 +13,7 @@ Example .env file:
     STM32_SERVER_MODE=network
     STM32_HOST=0.0.0.0
     STM32_PORT=8765
-    STM32_EMBEDDING_MODEL=all-MiniLM-L6-v2
+    VOYAGE_API_KEY=pa-...  # For indexing with voyage-4-large
 """
 
 from __future__ import annotations
@@ -45,15 +45,10 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-class EmbeddingModel(str, Enum):
-    """Supported embedding models."""
+class EmbeddingProvider(str, Enum):
+    """Embedding provider selection."""
 
-    MINILM_L6 = "all-MiniLM-L6-v2"  # Fast, 384 dimensions
-    MINILM_L12 = "all-MiniLM-L12-v2"  # Better quality, 384 dimensions
-    MPNET = "all-mpnet-base-v2"  # Best quality, 768 dimensions
-    E5_SMALL = "intfloat/e5-small-v2"  # Efficient, 384 dimensions
-    E5_BASE = "intfloat/e5-base-v2"  # Good balance, 768 dimensions
-    NOMIC_V15 = "nomic-ai/nomic-embed-text-v1.5"  # High quality, 768 dimensions, Matryoshka
+    VOYAGE_API = "voyage-api"  # Voyage 4 via API (large for indexing, lite for queries)
 
 
 class Settings(BaseSettings):
@@ -245,12 +240,34 @@ class Settings(BaseSettings):
     )
 
     # =========================================================================
-    # Embedding Configuration
+    # Embedding Configuration (Voyage 4 family)
     # =========================================================================
 
-    EMBEDDING_MODEL: str = Field(
-        default=EmbeddingModel.NOMIC_V15.value,
-        description="Sentence transformer model for embeddings",
+    EMBEDDING_PROVIDER_TYPE: str = Field(
+        default=EmbeddingProvider.VOYAGE_API.value,
+        description="Embedding provider type",
+    )
+
+    VOYAGE_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Voyage AI API key (required)",
+    )
+
+    VOYAGE_INDEX_MODEL: str = Field(
+        default="voyage-4-large",
+        description="Voyage model for document indexing (best quality)",
+    )
+
+    VOYAGE_QUERY_MODEL: str = Field(
+        default="voyage-4-lite",
+        description="Voyage model for query embedding (fast, cheap, same embedding space)",
+    )
+
+    EMBEDDING_DIMENSIONS: int = Field(
+        default=1024,
+        description="Output embedding dimensions (256, 512, 1024, or 2048)",
+        ge=256,
+        le=2048,
     )
 
     EMBEDDING_BATCH_SIZE: int = Field(
@@ -258,32 +275,6 @@ class Settings(BaseSettings):
         description="Batch size for embedding generation",
         ge=1,
         le=256,
-    )
-
-    EMBEDDING_DEVICE: str = Field(
-        default="cpu",
-        description="Device for embeddings: cpu, cuda, mps",
-    )
-
-    NORMALIZE_EMBEDDINGS: bool = Field(
-        default=True,
-        description="Normalize embedding vectors",
-    )
-
-    # Task prefixes for nomic-embed-text models
-    EMBEDDING_TASK_PREFIX_DOC: str = Field(
-        default="search_document: ",
-        description="Task prefix for document indexing (nomic models)",
-    )
-
-    EMBEDDING_TASK_PREFIX_QUERY: str = Field(
-        default="search_query: ",
-        description="Task prefix for search queries (nomic models)",
-    )
-
-    USE_TASK_PREFIXES: bool = Field(
-        default=True,
-        description="Use task prefixes for embedding (required for nomic models)",
     )
 
     # =========================================================================
@@ -461,15 +452,6 @@ class Settings(BaseSettings):
             raise ValueError(f"CHUNK_OVERLAP ({v}) must be less than CHUNK_SIZE ({chunk_size})")
         return v
 
-    @field_validator("EMBEDDING_DEVICE")
-    @classmethod
-    def validate_embedding_device(cls, v: str) -> str:
-        """Validate embedding device."""
-        valid_devices = {"cpu", "cuda", "mps", "auto"}
-        if v.lower() not in valid_devices:
-            raise ValueError(f"EMBEDDING_DEVICE must be one of: {valid_devices}")
-        return v.lower()
-
     # =========================================================================
     # Helper Methods
     # =========================================================================
@@ -505,7 +487,7 @@ class Settings(BaseSettings):
             "server_mode": self.SERVER_MODE.value,
             "host": self.HOST,
             "port": self.PORT,
-            "embedding_model": self.EMBEDDING_MODEL,
+            "embedding_provider": self.EMBEDDING_PROVIDER_TYPE,
             "collection_name": self.COLLECTION_NAME,
             "chunk_size": self.CHUNK_SIZE,
             "chunk_overlap": self.CHUNK_OVERLAP,

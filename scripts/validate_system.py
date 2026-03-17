@@ -114,11 +114,18 @@ def check_search() -> Tuple[bool, str]:
     try:
         from storage.chroma_store import STM32ChromaStore
         from mcp_server.config import settings
+        from mcp_server.embeddings import create_provider
 
         if not settings.CHROMA_DB_PATH.exists():
             return False, "Database not initialized"
 
-        store = STM32ChromaStore(settings.CHROMA_DB_PATH)
+        provider = create_provider(
+            api_key=settings.VOYAGE_API_KEY,
+            index_model=settings.VOYAGE_INDEX_MODEL,
+            query_model=settings.VOYAGE_QUERY_MODEL,
+            dimensions=settings.EMBEDDING_DIMENSIONS,
+        )
+        store = STM32ChromaStore(settings.CHROMA_DB_PATH, embedding_provider=provider)
         if store.count() == 0:
             return False, "No data to search"
 
